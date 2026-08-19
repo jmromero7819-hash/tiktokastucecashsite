@@ -10,7 +10,7 @@ const params = new URLSearchParams({
 client_key: "awoi60q6siz0v6vk",
 scope: "user.info.basic,video.upload",
 response_type: "code",
-redirect_uri: "https://tiktokastucecashsite.vercel.app/callback",
+redirect_uri: "https://tiktokastucecashsite.vercel.app/api/callback",
 state,
 });
 
