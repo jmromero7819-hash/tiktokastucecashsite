@@ -8,7 +8,7 @@ res.setHeader(
 );
 
 const params = new URLSearchParams({
-client_key: "awoi60q6siz0v6vk",
+client_key: "sbawuvysjvievehtjm",
 scope: "user.info.basic,video.upload",
 response_type: "code",
 redirect_uri: "https://tiktokastucecashsite.vercel.app/api/callback",
