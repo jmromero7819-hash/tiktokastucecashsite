@@ -13,7 +13,7 @@ const redirectUri =
 "https://tiktokastucecashsite.vercel.app/api/callback";
 
 const body = new URLSearchParams({
-client_key: "awoi60q6siz0v6vk",
+client_key: process.env.TIKTOK_CLIENT_KEY,
 client_secret: process.env.TIKTOK_CLIENT_SECRET,
 code: decodeURIComponent(code),
 grant_type: "authorization_code",
