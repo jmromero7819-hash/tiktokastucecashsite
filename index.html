@@ -46,6 +46,23 @@
 
   <p id="videoStatus"></p>
 
+  <p>
+    Render ID :
+    <strong id="renderId">Aucun</strong>
+  </p>
+
+  <p>
+    Statut Creatomate :
+    <strong id="renderStatus">Aucun</strong>
+  </p>
+
+  <p>
+    URL Creatomate :
+    <span id="renderUrl">Aucune</span>
+  </p>
+
+  <pre id="creatomateDebug"></pre>
+
   <hr>
 
   <h2>3. Envoyer vers TikTok</h2>
@@ -84,9 +101,9 @@
     let lastPublishId = "";
 
 
-    // =========================
-    // GÉNÉRATION DU SCRIPT
-    // =========================
+    // ========================================
+    // 1. GÉNÉRATION DU CONTENU AVEC OPENAI
+    // ========================================
 
     document.getElementById("generateContent").onclick = async () => {
 
@@ -107,6 +124,15 @@
 
         const data = await response.json();
 
+        if (!response.ok) {
+
+          output.innerText =
+            data.error ||
+            "Erreur pendant la génération.";
+
+          return;
+        }
+
         output.innerText =
           data.content ||
           data.error ||
@@ -122,9 +148,9 @@
     };
 
 
-    // =========================
-    // CRÉATION CREATOMATE
-    // =========================
+    // ========================================
+    // 2. CRÉATION DE LA VIDÉO CREATOMATE
+    // ========================================
 
     document.getElementById("generateVideo").onclick = async () => {
 
@@ -137,6 +163,18 @@
       const status =
         document.getElementById("videoStatus");
 
+      const renderId =
+        document.getElementById("renderId");
+
+      const renderStatus =
+        document.getElementById("renderStatus");
+
+      const renderUrl =
+        document.getElementById("renderUrl");
+
+      const debug =
+        document.getElementById("creatomateDebug");
+
       if (!script) {
 
         status.innerText =
@@ -147,6 +185,11 @@
 
       status.innerText =
         "Création de la vidéo en cours...";
+
+      renderId.innerText = "En attente...";
+      renderStatus.innerText = "En attente...";
+      renderUrl.innerText = "En attente...";
+      debug.innerText = "";
 
       try {
 
@@ -165,7 +208,10 @@
 
         const data = await response.json();
 
-        console.log("Creatomate :", data);
+        console.log("Réponse /api/render :", data);
+
+        debug.innerText =
+          JSON.stringify(data, null, 2);
 
         if (!response.ok || !data.success) {
 
@@ -173,25 +219,103 @@
             data.error ||
             "Erreur Creatomate.";
 
+          renderStatus.innerText =
+            "Erreur";
+
           return;
         }
 
-        status.innerText =
-          "Vidéo envoyée à Creatomate. Le rendu est en cours.";
+
+        // Creatomate peut renvoyer soit :
+        // - un objet
+        // - un tableau contenant le rendu
+        // Notre route ajoute aussi la propriété "render".
+
+        let render = data.render;
+
+        if (Array.isArray(render)) {
+          render = render[0];
+        }
+
+        if (render && render.data) {
+          render = render.data;
+        }
+
+
+        if (!render) {
+
+          status.innerText =
+            "Creatomate a répondu, mais aucun rendu n'a été trouvé.";
+
+          renderStatus.innerText =
+            "Rendu introuvable";
+
+          return;
+        }
+
+
+        const id =
+          render.id ||
+          render.render_id ||
+          "";
+
+        const currentStatus =
+          render.status ||
+          "Statut non fourni";
+
+        const url =
+          render.url ||
+          render.output_url ||
+          "";
+
+
+        renderId.innerText =
+          id || "Non reçu";
+
+        renderStatus.innerText =
+          currentStatus;
+
+        renderUrl.innerText =
+          url || "Pas encore disponible";
+
+
+        // Si Creatomate a déjà terminé,
+        // on place automatiquement son URL dans le champ TikTok.
+
+        if (url) {
+
+          document.getElementById("videoUrl").value =
+            url;
+
+          status.innerText =
+            "Vidéo Creatomate terminée et URL récupérée automatiquement.";
+
+        } else {
+
+          status.innerText =
+            "Rendu Creatomate créé. Il n'est pas encore terminé.";
+        }
+
 
       } catch (error) {
 
         status.innerText =
           "Erreur de connexion avec Creatomate.";
 
+        renderStatus.innerText =
+          "Erreur";
+
+        debug.innerText =
+          error.message;
+
         console.error(error);
       }
     };
 
 
-    // =========================
-    // ENVOI VERS TIKTOK
-    // =========================
+    // ========================================
+    // 3. ENVOI DE LA VIDÉO VERS TIKTOK
+    // ========================================
 
     document.getElementById("testUpload").onclick = async () => {
 
@@ -236,21 +360,36 @@
 
         if (!response.ok || !data.success) {
 
-          status.innerText =
-            data.error?.message ||
-            data.error ||
-            "Erreur TikTok.";
+          if (typeof data.error === "string") {
+
+            status.innerText =
+              data.error;
+
+          } else {
+
+            status.innerText =
+              data.error?.message ||
+              JSON.stringify(data);
+          }
 
           return;
         }
 
-        lastPublishId = data.publish_id || "";
 
-        document.getElementById("publishId").innerText =
-          lastPublishId || "Non reçu";
+        lastPublishId =
+          data.publish_id || "";
+
+
+        document
+          .getElementById("publishId")
+          .innerText =
+            lastPublishId || "Non reçu";
+
 
         status.innerText =
+          data.message ||
           "Vidéo acceptée par TikTok.";
+
 
       } catch (error) {
 
@@ -262,14 +401,15 @@
     };
 
 
-    // =========================
-    // VÉRIFICATION DU STATUT
-    // =========================
+    // ========================================
+    // 4. VÉRIFICATION DU STATUT TIKTOK
+    // ========================================
 
     document.getElementById("checkStatus").onclick = async () => {
 
       const output =
         document.getElementById("tiktokStatus");
+
 
       if (!lastPublishId) {
 
@@ -279,8 +419,10 @@
         return;
       }
 
+
       output.innerText =
         "Vérification en cours...";
+
 
       try {
 
@@ -297,12 +439,24 @@
           })
         });
 
-        const data = await response.json();
 
-        console.log("TikTok status :", data);
+        const data =
+          await response.json();
+
+
+        console.log(
+          "TikTok status :",
+          data
+        );
+
 
         output.innerText =
-          JSON.stringify(data, null, 2);
+          JSON.stringify(
+            data,
+            null,
+            2
+          );
+
 
       } catch (error) {
 
