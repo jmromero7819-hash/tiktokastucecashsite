@@ -7,6 +7,7 @@
 </head>
 
 <body>
+
   <h1>TikTok Astuce Cash</h1>
 
   <p>
@@ -21,25 +22,23 @@
 
   <hr>
 
-  <p>
-    <a href="privacy.html">Politique de confidentialité</a>
-  </p>
-
-  <p>
-    <a href="terms.html">Conditions d'utilisation</a>
-  </p>
-
-  <p>
-    <a href="/api/login">Se connecter avec TikTok</a>
-  </p>
+  <p><a href="privacy.html">Politique de confidentialité</a></p>
+  <p><a href="terms.html">Conditions d'utilisation</a></p>
+  <p><a href="/api/login">Se connecter avec TikTok</a></p>
 
   <hr>
+
+  <h2>1. Générer le contenu</h2>
 
   <button id="generateContent">
     Générer automatiquement
   </button>
 
   <p id="generatedContent"></p>
+
+  <hr>
+
+  <h2>2. Créer la vidéo</h2>
 
   <button id="generateVideo">
     Créer la vidéo automatiquement
@@ -49,9 +48,12 @@
 
   <hr>
 
+  <h2>3. Envoyer vers TikTok</h2>
+
   <input
     id="videoUrl"
     type="url"
+    size="70"
     placeholder="URL de la vidéo"
   >
 
@@ -59,13 +61,40 @@
     Envoyer la vidéo vers TikTok
   </button>
 
+  <p id="uploadStatus"></p>
+
+  <hr>
+
+  <h2>4. Vérifier TikTok</h2>
+
+  <p>
+    Publish ID :
+    <strong id="publishId">Aucun</strong>
+  </p>
+
+  <button id="checkStatus">
+    Vérifier le statut TikTok
+  </button>
+
+  <pre id="tiktokStatus"></pre>
+
+
   <script>
+
+    let lastPublishId = "";
+
+
+    // =========================
+    // GÉNÉRATION DU SCRIPT
+    // =========================
 
     document.getElementById("generateContent").onclick = async () => {
 
-      const output = document.getElementById("generatedContent");
+      const output =
+        document.getElementById("generatedContent");
 
-      output.innerText = "Génération du script en cours...";
+      output.innerText =
+        "Génération du contenu en cours...";
 
       try {
 
@@ -85,12 +114,17 @@
 
       } catch (error) {
 
-        output.innerText = "Erreur pendant la génération du script.";
+        output.innerText =
+          "Erreur pendant la génération.";
 
         console.error(error);
       }
     };
 
+
+    // =========================
+    // CRÉATION CREATOMATE
+    // =========================
 
     document.getElementById("generateVideo").onclick = async () => {
 
@@ -131,13 +165,13 @@
 
         const data = await response.json();
 
-        console.log("Creatomate:", data);
+        console.log("Creatomate :", data);
 
         if (!response.ok || !data.success) {
 
           status.innerText =
             data.error ||
-            "Erreur pendant la création de la vidéo.";
+            "Erreur Creatomate.";
 
           return;
         }
@@ -155,17 +189,31 @@
     };
 
 
+    // =========================
+    // ENVOI VERS TIKTOK
+    // =========================
+
     document.getElementById("testUpload").onclick = async () => {
 
       const videoUrl =
-        document.getElementById("videoUrl").value.trim();
+        document
+          .getElementById("videoUrl")
+          .value
+          .trim();
+
+      const status =
+        document.getElementById("uploadStatus");
 
       if (!videoUrl) {
 
-        alert("Aucune URL de vidéo.");
+        status.innerText =
+          "Aucune URL vidéo.";
 
         return;
       }
+
+      status.innerText =
+        "Envoi vers TikTok...";
 
       try {
 
@@ -182,13 +230,84 @@
           })
         });
 
-        const result = await response.text();
+        const data = await response.json();
 
-        alert(result);
+        console.log("TikTok upload :", data);
+
+        if (!response.ok || !data.success) {
+
+          status.innerText =
+            data.error?.message ||
+            data.error ||
+            "Erreur TikTok.";
+
+          return;
+        }
+
+        lastPublishId = data.publish_id || "";
+
+        document.getElementById("publishId").innerText =
+          lastPublishId || "Non reçu";
+
+        status.innerText =
+          "Vidéo acceptée par TikTok.";
 
       } catch (error) {
 
-        alert("Erreur pendant l'envoi vers TikTok.");
+        status.innerText =
+          "Erreur pendant l'envoi TikTok.";
+
+        console.error(error);
+      }
+    };
+
+
+    // =========================
+    // VÉRIFICATION DU STATUT
+    // =========================
+
+    document.getElementById("checkStatus").onclick = async () => {
+
+      const output =
+        document.getElementById("tiktokStatus");
+
+      if (!lastPublishId) {
+
+        output.innerText =
+          "Aucun publish_id disponible.";
+
+        return;
+      }
+
+      output.innerText =
+        "Vérification en cours...";
+
+      try {
+
+        const response = await fetch("/api/status", {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            publish_id: lastPublishId
+          })
+        });
+
+        const data = await response.json();
+
+        console.log("TikTok status :", data);
+
+        output.innerText =
+          JSON.stringify(data, null, 2);
+
+      } catch (error) {
+
+        output.innerText =
+          "Erreur pendant la vérification.";
 
         console.error(error);
       }
