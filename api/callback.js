@@ -1,6 +1,15 @@
 export default async function handler(req, res) {
 const { code, state, error, error_description } = req.query;
+const cookies = Object.fromEntries(
+(req.headers.cookie || "")
+.split(";")
+.filter(Boolean)
+.map(c => c.trim().split("="))
+);
 
+if (!state || cookies.tiktok_oauth_state !== state) {
+return res.status(400).send("État OAuth invalide.");
+}
 if (error) {
 return res.status(400).send(`Erreur TikTok : ${error_description || error}`);
 }
