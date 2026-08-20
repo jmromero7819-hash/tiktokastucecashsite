@@ -6,23 +6,43 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(url);
+    const parsedUrl = new URL(url);
+
+    if (
+      parsedUrl.protocol !== "https:" ||
+      parsedUrl.hostname !== "cdn.creatomate.com"
+    ) {
+      return res.status(403).send("Domaine non autorisé");
+    }
+
+    const response = await fetch(parsedUrl.toString());
 
     if (!response.ok) {
-      return res.status(response.status).send("Impossible de récupérer la vidéo");
+      return res
+        .status(response.status)
+        .send("Impossible de récupérer la vidéo");
     }
 
     const contentType =
       response.headers.get("content-type") || "video/mp4";
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=3600"
+    );
 
-    const buffer = Buffer.from(await response.arrayBuffer());
+    const buffer = Buffer.from(
+      await response.arrayBuffer()
+    );
 
     return res.status(200).send(buffer);
 
   } catch (error) {
-    return res.status(500).send("Erreur serveur");
+    console.error(error);
+
+    return res
+      .status(500)
+      .send("Erreur serveur");
   }
 }
