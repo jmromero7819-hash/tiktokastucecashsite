@@ -30,37 +30,171 @@
   </p>
 
   <p>
-<a href="/api/login">Se connecter avec TikTok</a>
-</p>
-  <button id="generateContent">Générer automatiquement</button>
-<p id="generatedContent"></p>
-  <script>document.getElementById("generateContent").onclick = async () => {
-  const response = await fetch("/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }
-  });
+    <a href="/api/login">Se connecter avec TikTok</a>
+  </p>
 
-  const data = await response.json();
-  document.getElementById("generatedContent").innerText =
-    data.content || data.error || JSON.stringify(data);
-};
- </script>
-  <input id="videoUrl" type="url" placeholder="Colle ici l'URL de la vidéo">
-  <button id="testUpload">Tester l'envoi TikTok</button>
+  <hr>
 
-<script>
-document.getElementById("testUpload").onclick = async () => {
-  const response = await fetch("/api/upload", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      video_url: document.getElementById("videoUrl").value
-    })
-  });
+  <button id="generateContent">
+    Générer automatiquement
+  </button>
 
-  const result = await response.text();
-  alert(result);
-};
-</script>
+  <p id="generatedContent"></p>
+
+  <button id="generateVideo">
+    Créer la vidéo automatiquement
+  </button>
+
+  <p id="videoStatus"></p>
+
+  <hr>
+
+  <input
+    id="videoUrl"
+    type="url"
+    placeholder="URL de la vidéo"
+  >
+
+  <button id="testUpload">
+    Envoyer la vidéo vers TikTok
+  </button>
+
+  <script>
+
+    document.getElementById("generateContent").onclick = async () => {
+
+      const output = document.getElementById("generatedContent");
+
+      output.innerText = "Génération du script en cours...";
+
+      try {
+
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+
+        const data = await response.json();
+
+        output.innerText =
+          data.content ||
+          data.error ||
+          JSON.stringify(data);
+
+      } catch (error) {
+
+        output.innerText = "Erreur pendant la génération du script.";
+
+        console.error(error);
+      }
+    };
+
+
+    document.getElementById("generateVideo").onclick = async () => {
+
+      const script =
+        document
+          .getElementById("generatedContent")
+          .innerText
+          .trim();
+
+      const status =
+        document.getElementById("videoStatus");
+
+      if (!script) {
+
+        status.innerText =
+          "Génère d'abord le contenu.";
+
+        return;
+      }
+
+      status.innerText =
+        "Création de la vidéo en cours...";
+
+      try {
+
+        const response = await fetch("/api/render", {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            script: script
+          })
+        });
+
+        const data = await response.json();
+
+        console.log("Creatomate:", data);
+
+        if (!response.ok || !data.success) {
+
+          status.innerText =
+            data.error ||
+            "Erreur pendant la création de la vidéo.";
+
+          return;
+        }
+
+        status.innerText =
+          "Vidéo envoyée à Creatomate. Le rendu est en cours.";
+
+      } catch (error) {
+
+        status.innerText =
+          "Erreur de connexion avec Creatomate.";
+
+        console.error(error);
+      }
+    };
+
+
+    document.getElementById("testUpload").onclick = async () => {
+
+      const videoUrl =
+        document.getElementById("videoUrl").value.trim();
+
+      if (!videoUrl) {
+
+        alert("Aucune URL de vidéo.");
+
+        return;
+      }
+
+      try {
+
+        const response = await fetch("/api/upload", {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            video_url: videoUrl
+          })
+        });
+
+        const result = await response.text();
+
+        alert(result);
+
+      } catch (error) {
+
+        alert("Erreur pendant l'envoi vers TikTok.");
+
+        console.error(error);
+      }
+    };
+
+  </script>
+
 </body>
 </html>
