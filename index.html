@@ -32,5 +32,21 @@
   <p>
 <a href="/api/login">Se connecter avec TikTok</a>
 </p>
+  <button id="testUpload">Tester l'envoi TikTok</button>
+
+<script>
+document.getElementById("testUpload").onclick = async () => {
+  const response = await fetch("/api/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      video_url: "https://tiktokastucecashsite.vercel.app/IMG_4886.mov"
+    })
+  });
+
+  const result = await response.text();
+  alert(result);
+};
+</script>
 </body>
 </html>
