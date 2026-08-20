@@ -61,6 +61,12 @@
     <span id="renderUrl">Aucune</span>
   </p>
 
+  <button id="checkRenderStatus">
+    Vérifier le rendu Creatomate
+  </button>
+
+  <p id="renderCheckStatus"></p>
+
   <pre id="creatomateDebug"></pre>
 
   <hr>
@@ -99,6 +105,7 @@
   <script>
 
     let lastPublishId = "";
+    let lastRenderId = "";
 
 
     // ========================================
@@ -125,11 +132,9 @@
         const data = await response.json();
 
         if (!response.ok) {
-
           output.innerText =
             data.error ||
             "Erreur pendant la génération.";
-
           return;
         }
 
@@ -176,10 +181,8 @@
         document.getElementById("creatomateDebug");
 
       if (!script) {
-
         status.innerText =
           "Génère d'abord le contenu.";
-
         return;
       }
 
@@ -194,13 +197,10 @@
       try {
 
         const response = await fetch("/api/render", {
-
           method: "POST",
-
           headers: {
             "Content-Type": "application/json"
           },
-
           body: JSON.stringify({
             script: script
           })
@@ -208,28 +208,17 @@
 
         const data = await response.json();
 
-        console.log("Réponse /api/render :", data);
-
         debug.innerText =
           JSON.stringify(data, null, 2);
 
         if (!response.ok || !data.success) {
-
           status.innerText =
             data.error ||
             "Erreur Creatomate.";
-
           renderStatus.innerText =
             "Erreur";
-
           return;
         }
-
-
-        // Creatomate peut renvoyer soit :
-        // - un objet
-        // - un tableau contenant le rendu
-        // Notre route ajoute aussi la propriété "render".
 
         let render = data.render;
 
@@ -241,18 +230,13 @@
           render = render.data;
         }
 
-
         if (!render) {
-
           status.innerText =
             "Creatomate a répondu, mais aucun rendu n'a été trouvé.";
-
           renderStatus.innerText =
             "Rendu introuvable";
-
           return;
         }
-
 
         const id =
           render.id ||
@@ -268,6 +252,7 @@
           render.output_url ||
           "";
 
+        lastRenderId = id;
 
         renderId.innerText =
           id || "Non reçu";
@@ -278,24 +263,14 @@
         renderUrl.innerText =
           url || "Pas encore disponible";
 
-
-        // Si Creatomate a déjà terminé,
-        // on place automatiquement son URL dans le champ TikTok.
-
-        if (url) {
-
-          document.getElementById("videoUrl").value =
-            url;
-
+        if (currentStatus === "succeeded" && url) {
+          document.getElementById("videoUrl").value = url;
           status.innerText =
-            "Vidéo Creatomate terminée et URL récupérée automatiquement.";
-
+            "Vidéo Creatomate terminée et prête.";
         } else {
-
           status.innerText =
-            "Rendu Creatomate créé. Il n'est pas encore terminé.";
+            "Rendu Creatomate créé. Clique sur « Vérifier le rendu Creatomate ».";
         }
-
 
       } catch (error) {
 
@@ -307,6 +282,103 @@
 
         debug.innerText =
           error.message;
+      }
+    };
+
+
+    // ========================================
+    // 2B. VÉRIFICATION DU RENDU CREATOMATE
+    // ========================================
+
+    document.getElementById("checkRenderStatus").onclick = async () => {
+
+      const output =
+        document.getElementById("renderCheckStatus");
+
+      const renderStatus =
+        document.getElementById("renderStatus");
+
+      const renderUrl =
+        document.getElementById("renderUrl");
+
+      if (!lastRenderId) {
+        output.innerText =
+          "Aucun Render ID disponible.";
+        return;
+      }
+
+      output.innerText =
+        "Vérification du rendu...";
+
+      try {
+
+        const response = await fetch("/api/render-status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            render_id: lastRenderId
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          output.innerText =
+            data.error ||
+            "Erreur pendant la vérification Creatomate.";
+          return;
+        }
+
+        let render = data.render;
+
+        if (Array.isArray(render)) {
+          render = render[0];
+        }
+
+        if (render && render.data) {
+          render = render.data;
+        }
+
+        const currentStatus =
+          render?.status ||
+          "Statut inconnu";
+
+        const url =
+          render?.url ||
+          render?.output_url ||
+          "";
+
+        renderStatus.innerText =
+          currentStatus;
+
+        renderUrl.innerText =
+          url || "Pas encore disponible";
+
+        if (currentStatus === "succeeded" && url) {
+
+          document.getElementById("videoUrl").value =
+            url;
+
+          output.innerText =
+            "Vidéo terminée. L'URL a été ajoutée automatiquement.";
+
+        } else if (currentStatus === "failed") {
+
+          output.innerText =
+            "Le rendu Creatomate a échoué.";
+
+        } else {
+
+          output.innerText =
+            "Le rendu est encore en cours : " + currentStatus;
+        }
+
+      } catch (error) {
+
+        output.innerText =
+          "Erreur pendant la vérification du rendu.";
 
         console.error(error);
       }
@@ -329,10 +401,8 @@
         document.getElementById("uploadStatus");
 
       if (!videoUrl) {
-
         status.innerText =
           "Aucune URL vidéo.";
-
         return;
       }
 
@@ -342,13 +412,10 @@
       try {
 
         const response = await fetch("/api/upload", {
-
           method: "POST",
-
           headers: {
             "Content-Type": "application/json"
           },
-
           body: JSON.stringify({
             video_url: videoUrl
           })
@@ -356,17 +423,12 @@
 
         const data = await response.json();
 
-        console.log("TikTok upload :", data);
-
         if (!response.ok || !data.success) {
 
           if (typeof data.error === "string") {
-
             status.innerText =
               data.error;
-
           } else {
-
             status.innerText =
               data.error?.message ||
               JSON.stringify(data);
@@ -375,28 +437,22 @@
           return;
         }
 
-
         lastPublishId =
           data.publish_id || "";
-
 
         document
           .getElementById("publishId")
           .innerText =
             lastPublishId || "Non reçu";
 
-
         status.innerText =
           data.message ||
           "Vidéo acceptée par TikTok.";
-
 
       } catch (error) {
 
         status.innerText =
           "Erreur pendant l'envoi TikTok.";
-
-        console.error(error);
       }
     };
 
@@ -410,45 +466,29 @@
       const output =
         document.getElementById("tiktokStatus");
 
-
       if (!lastPublishId) {
-
         output.innerText =
           "Aucun publish_id disponible.";
-
         return;
       }
-
 
       output.innerText =
         "Vérification en cours...";
 
-
       try {
 
         const response = await fetch("/api/status", {
-
           method: "POST",
-
           headers: {
             "Content-Type": "application/json"
           },
-
           body: JSON.stringify({
             publish_id: lastPublishId
           })
         });
 
-
         const data =
           await response.json();
-
-
-        console.log(
-          "TikTok status :",
-          data
-        );
-
 
         output.innerText =
           JSON.stringify(
@@ -457,13 +497,10 @@
             2
           );
 
-
       } catch (error) {
 
         output.innerText =
           "Erreur pendant la vérification.";
-
-        console.error(error);
       }
     };
 
