@@ -32,6 +32,19 @@
   <p>
 <a href="/api/login">Se connecter avec TikTok</a>
 </p>
+  <button id="generateContent">Générer automatiquement</button>
+<p id="generatedContent"></p>
+  <script>document.getElementById("generateContent").onclick = async () => {
+  const response = await fetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  });
+
+  const data = await response.json();
+  document.getElementById("generatedContent").innerText =
+    data.content || data.error || JSON.stringify(data);
+};
+ </script>
   <input id="videoUrl" type="url" placeholder="Colle ici l'URL de la vidéo">
   <button id="testUpload">Tester l'envoi TikTok</button>
 
