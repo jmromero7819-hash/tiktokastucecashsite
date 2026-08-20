@@ -27,8 +27,9 @@ export default async function handler(req, res) {
   }
 
   const text =
-    data.output?.[0]?.content?.[0]?.text ||
-    "Aucun contenu généré.";
+  data.output_text ||
+  data.output?.[0]?.content?.[0]?.text ||
+  "Aucun contenu généré.";
 
   return res.status(200).json({
     success: true,
