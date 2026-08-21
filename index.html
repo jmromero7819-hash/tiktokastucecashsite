@@ -73,7 +73,7 @@
   <h2>2. Créer la vidéo</h2>
 
   <button id="makeVideo">
-    Générer la vidéo 720×1280
+    Générer la vidéo 720×1280 MP4
   </button>
 
   <p id="videoStatus"></p>
@@ -430,7 +430,7 @@
         }
 
         status.innerText =
-          "Création de la vidéo 720×1280...";
+          "Création de la vidéo MP4 720×1280...";
 
         try {
 
@@ -461,24 +461,21 @@
           const stream =
             canvas.captureStream(fps);
 
-          let mimeType =
-            "video/webm";
+          const mp4Types = [
+            "video/mp4;codecs=avc1.42E01E",
+            "video/mp4;codecs=avc1",
+            "video/mp4"
+          ];
 
-          if (
-            MediaRecorder.isTypeSupported(
-              "video/webm;codecs=vp9"
-            )
-          ) {
-            mimeType =
-              "video/webm;codecs=vp9";
+          const mimeType =
+            mp4Types.find(type =>
+              MediaRecorder.isTypeSupported(type)
+            );
 
-          } else if (
-            MediaRecorder.isTypeSupported(
-              "video/webm;codecs=vp8"
-            )
-          ) {
-            mimeType =
-              "video/webm;codecs=vp8";
+          if (!mimeType) {
+            status.innerText =
+              "Ce navigateur ne permet pas de créer directement une vidéo MP4/H.264. Essaie avec la dernière version de Chrome ou Edge.";
+            return;
           }
 
           const recorder =
@@ -486,7 +483,7 @@
               stream,
               {
                 mimeType,
-                videoBitsPerSecond: 900000
+                videoBitsPerSecond: 1200000
               }
             );
 
@@ -538,9 +535,7 @@
                 ) {
 
                   clearInterval(timer);
-
                   resolve();
-
                   return;
                 }
 
@@ -613,7 +608,7 @@
             "block";
 
           status.innerText =
-            "Vidéo créée : 720×1280. Tu peux la prévisualiser.";
+            "Vidéo MP4 créée : 720×1280. Tu peux la prévisualiser.";
 
         } catch (error) {
 
@@ -655,7 +650,7 @@
                 headers: {
                   "Content-Type":
                     generatedVideoBlob.type ||
-                    "video/webm"
+                    "video/mp4"
                 },
                 body:
                   generatedVideoBlob
