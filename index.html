@@ -3,7 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>TikTok Astuce Cash</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    button {
+      padding: 12px 18px;
+      margin: 6px 0;
+      cursor: pointer;
+    }
+
+    #videoPreview {
+      width: 270px;
+      max-width: 100%;
+      margin-top: 15px;
+      display: none;
+      background: black;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
 </head>
 
 <body>
@@ -11,22 +41,29 @@
   <h1>TikTok Astuce Cash</h1>
 
   <p>
-    TikTok Astuce Cash est une application qui utilise l'intelligence artificielle
-    pour créer du contenu éducatif autour des astuces pour économiser et mieux gérer son argent.
+    TikTok Astuce Cash utilise l'intelligence artificielle
+    pour créer du contenu éducatif autour des astuces pour économiser
+    et mieux gérer son argent.
   </p>
 
   <p>
-    L'application permet de préparer et publier du contenu TikTok
-    avec l'autorisation de l'utilisateur.
+    <a href="privacy.html">Politique de confidentialité</a>
+  </p>
+
+  <p>
+    <a href="terms.html">Conditions d'utilisation</a>
+  </p>
+
+  <p>
+    <a href="/api/login">Se connecter avec TikTok</a>
   </p>
 
   <hr>
 
-  <p><a href="privacy.html">Politique de confidentialité</a></p>
-  <p><a href="terms.html">Conditions d'utilisation</a></p>
-  <p><a href="/api/login">Se connecter avec TikTok</a></p>
 
-  <hr>
+  <!-- ===================================== -->
+  <!-- 1. GÉNÉRATION DU SCRIPT -->
+  <!-- ===================================== -->
 
   <h2>1. Générer le contenu</h2>
 
@@ -34,66 +71,59 @@
     Générer automatiquement
   </button>
 
-  <p id="generatedContent"></p>
+  <pre id="generatedContent"></pre>
+
 
   <hr>
 
+
+  <!-- ===================================== -->
+  <!-- 2. GÉNÉRATION VIDÉO LOCALE -->
+  <!-- ===================================== -->
+
   <h2>2. Créer la vidéo</h2>
 
-  <button id="generateVideo">
-    Créer la vidéo automatiquement
+  <button id="makeVideo">
+    Générer la vidéo 720×1280
   </button>
 
   <p id="videoStatus"></p>
 
-  <p>
-    Render ID :
-    <strong id="renderId">Aucun</strong>
-  </p>
+  <video
+    id="videoPreview"
+    controls
+  ></video>
 
-  <p>
-    Statut Creatomate :
-    <strong id="renderStatus">Aucun</strong>
-  </p>
-
-  <p>
-    URL Creatomate :
-    <span id="renderUrl">Aucune</span>
-  </p>
-
-  <button id="checkRenderStatus">
-    Vérifier le rendu Creatomate
-  </button>
-
-  <p id="renderCheckStatus"></p>
-
-  <pre id="creatomateDebug"></pre>
 
   <hr>
+
+
+  <!-- ===================================== -->
+  <!-- 3. ENVOI TIKTOK -->
+  <!-- ===================================== -->
 
   <h2>3. Envoyer vers TikTok</h2>
 
-  <input
-    id="videoUrl"
-    type="url"
-    size="70"
-    placeholder="URL de la vidéo"
-  >
-
-  <button id="testUpload">
-    Envoyer la vidéo vers TikTok
+  <button id="sendTikTok">
+    Envoyer la vidéo générée vers TikTok
   </button>
 
   <p id="uploadStatus"></p>
-
-  <hr>
-
-  <h2>4. Vérifier TikTok</h2>
 
   <p>
     Publish ID :
     <strong id="publishId">Aucun</strong>
   </p>
+
+
+  <hr>
+
+
+  <!-- ===================================== -->
+  <!-- 4. STATUT TIKTOK -->
+  <!-- ===================================== -->
+
+  <h2>4. Vérifier TikTok</h2>
 
   <button id="checkStatus">
     Vérifier le statut TikTok
@@ -101,14 +131,26 @@
 
   <pre id="tiktokStatus"></pre>
 
+
+  <!-- Canvas invisible utilisé pour fabriquer la vidéo -->
+
+  <canvas
+    id="videoCanvas"
+    width="720"
+    height="1280"
+    style="display:none;"
+  ></canvas>
+
+
   <script>
 
+    let generatedVideoBlob = null;
     let lastPublishId = "";
-    let lastRenderId = "";
 
-    // ========================================
-    // 1. GÉNÉRATION DU CONTENU AVEC OPENAI
-    // ========================================
+
+    // =====================================
+    // GÉNÉRATION DU SCRIPT
+    // =====================================
 
     document.getElementById("generateContent").onclick = async () => {
 
@@ -120,26 +162,36 @@
 
       try {
 
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
+        const response =
+          await fetch("/api/generate", {
 
-        const data = await response.json();
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            }
+
+          });
+
+
+        const data =
+          await response.json();
+
 
         if (!response.ok) {
+
           output.innerText =
             data.error ||
             "Erreur pendant la génération.";
+
           return;
         }
 
+
         output.innerText =
           data.content ||
-          data.error ||
-          JSON.stringify(data);
+          "Aucun contenu généré.";
+
 
       } catch (error) {
 
@@ -150,393 +202,719 @@
       }
     };
 
-    // ========================================
-    // 2. CRÉATION DE LA VIDÉO CREATOMATE
-    // ========================================
 
-    document.getElementById("generateVideo").onclick = async () => {
+    // =====================================
+    // OUTILS TEXTE CANVAS
+    // =====================================
 
-      const script =
-        document
-          .getElementById("generatedContent")
-          .innerText
-          .trim();
+    function wrapText(ctx, text, maxWidth) {
 
-      const status =
-        document.getElementById("videoStatus");
+      const words =
+        text.split(/\s+/);
 
-      const renderId =
-        document.getElementById("renderId");
+      const lines = [];
 
-      const renderStatus =
-        document.getElementById("renderStatus");
+      let currentLine = "";
 
-      const renderUrl =
-        document.getElementById("renderUrl");
 
-      const debug =
-        document.getElementById("creatomateDebug");
+      for (const word of words) {
 
-      if (!script) {
-        status.innerText =
-          "Génère d'abord le contenu.";
-        return;
-      }
+        const testLine =
+          currentLine
+            ? currentLine + " " + word
+            : word;
 
-      status.innerText =
-        "Création de la vidéo en cours...";
 
-      renderId.innerText = "En attente...";
-      renderStatus.innerText = "En attente...";
-      renderUrl.innerText = "En attente...";
-      debug.innerText = "";
+        if (
+          ctx.measureText(testLine).width > maxWidth &&
+          currentLine
+        ) {
 
-      try {
+          lines.push(currentLine);
 
-        const response = await fetch("/api/render", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            script: script
-          })
-        });
-
-        const data = await response.json();
-
-        debug.innerText =
-          JSON.stringify(data, null, 2);
-
-        if (!response.ok || !data.success) {
-          status.innerText =
-            data.error ||
-            "Erreur Creatomate.";
-
-          renderStatus.innerText =
-            "Erreur";
-
-          return;
-        }
-
-        let render = data.render;
-
-        if (Array.isArray(render)) {
-          render = render[0];
-        }
-
-        if (render && render.data) {
-          render = render.data;
-        }
-
-        if (!render) {
-          status.innerText =
-            "Creatomate a répondu, mais aucun rendu n'a été trouvé.";
-
-          renderStatus.innerText =
-            "Rendu introuvable";
-
-          return;
-        }
-
-        const id =
-          render.id ||
-          render.render_id ||
-          "";
-
-        const currentStatus =
-          render.status ||
-          "Statut non fourni";
-
-        const url =
-          render.url ||
-          render.output_url ||
-          "";
-
-        lastRenderId = id;
-
-        renderId.innerText =
-          id || "Non reçu";
-
-        renderStatus.innerText =
-          currentStatus;
-
-        renderUrl.innerText =
-          url || "Pas encore disponible";
-
-        if (currentStatus === "succeeded" && url) {
-
-          document.getElementById("videoUrl").value =
-            url;
-
-          status.innerText =
-            "Vidéo Creatomate terminée et prête.";
+          currentLine = word;
 
         } else {
 
-          status.innerText =
-            "Rendu Creatomate créé. Clique sur « Vérifier le rendu Creatomate ».";
+          currentLine = testLine;
         }
-
-      } catch (error) {
-
-        status.innerText =
-          "Erreur de connexion avec Creatomate.";
-
-        renderStatus.innerText =
-          "Erreur";
-
-        debug.innerText =
-          error.message;
-
-        console.error(error);
-      }
-    };
-
-    // ========================================
-    // 2B. VÉRIFICATION DU RENDU CREATOMATE
-    // ========================================
-
-    document.getElementById("checkRenderStatus").onclick = async () => {
-
-      const output =
-        document.getElementById("renderCheckStatus");
-
-      const renderStatus =
-        document.getElementById("renderStatus");
-
-      const renderUrl =
-        document.getElementById("renderUrl");
-
-      const debug =
-        document.getElementById("creatomateDebug");
-
-      if (!lastRenderId) {
-        output.innerText =
-          "Aucun Render ID disponible.";
-        return;
       }
 
-      output.innerText =
-        "Vérification du rendu...";
 
-      try {
+      if (currentLine) {
+        lines.push(currentLine);
+      }
 
-        const response = await fetch("/api/render-status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            render_id: lastRenderId
-          })
-        });
 
-        const data = await response.json();
+      return lines;
+    }
 
-        // IMPORTANT :
-        // on remplace l'ancien JSON par la réponse actuelle
-        debug.innerText =
-          JSON.stringify(data, null, 2);
 
-        if (!response.ok || !data.success) {
-          output.innerText =
-            data.error ||
-            "Erreur pendant la vérification Creatomate.";
-          return;
-        }
+    function cleanScript(text) {
 
-        let render = data.render;
+      return text
 
-        if (Array.isArray(render)) {
-          render = render[0];
-        }
+        .replace(/\*\*/g, "")
 
-        if (render && render.data) {
-          render = render.data;
-        }
+        .replace(/#{1,6}\s?/g, "")
 
-        if (!render) {
-          output.innerText =
-            "Aucune information de rendu reçue.";
-          return;
-        }
+        .replace(/\n{3,}/g, "\n\n")
 
-        const currentStatus =
-          render.status ||
-          "Statut inconnu";
+        .trim();
+    }
 
-        const url =
-          render.url ||
-          render.output_url ||
-          "";
 
-        const errorMessage =
-          render.error_message ||
-          render.error ||
-          render.message ||
-          "";
+    function splitIntoScenes(text) {
 
-        renderStatus.innerText =
-          currentStatus;
+      const cleaned =
+        cleanScript(text);
 
-        renderUrl.innerText =
-          url || "Pas encore disponible";
 
-        if (currentStatus === "succeeded" && url) {
+      let pieces =
+        cleaned
+          .split(/\n\n+/)
+          .map(item => item.trim())
+          .filter(Boolean);
 
-          document.getElementById("videoUrl").value =
-            url;
 
-          output.innerText =
-            "Vidéo terminée. L'URL a été ajoutée automatiquement.";
+      if (pieces.length < 4) {
 
-        } else if (currentStatus === "failed") {
+        pieces =
+          cleaned
+            .split(/[.!?]+/)
+            .map(item => item.trim())
+            .filter(Boolean);
+      }
 
-          output.innerText =
-            errorMessage
-              ? "Échec Creatomate : " + errorMessage
-              : "Le rendu Creatomate a échoué. Consulte le JSON ci-dessous.";
+
+      const scenes = [];
+
+
+      for (const piece of pieces) {
+
+        if (piece.length <= 180) {
+
+          scenes.push(piece);
 
         } else {
 
-          output.innerText =
-            "Le rendu est encore en cours : " + currentStatus;
-        }
+          const words =
+            piece.split(" ");
 
-      } catch (error) {
+          let current = "";
 
-        output.innerText =
-          "Erreur pendant la vérification du rendu.";
 
-        debug.innerText =
-          error.message;
+          for (const word of words) {
 
-        console.error(error);
-      }
-    };
+            if ((current + " " + word).length > 160) {
 
-    // ========================================
-    // 3. ENVOI DE LA VIDÉO VERS TIKTOK
-    // ========================================
+              scenes.push(current.trim());
 
-    document.getElementById("testUpload").onclick = async () => {
+              current = word;
 
-      const videoUrl =
-        document
-          .getElementById("videoUrl")
-          .value
-          .trim();
+            } else {
 
-      const status =
-        document.getElementById("uploadStatus");
-
-      if (!videoUrl) {
-        status.innerText =
-          "Aucune URL vidéo.";
-        return;
-      }
-
-      status.innerText =
-        "Envoi vers TikTok...";
-
-      try {
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            video_url: videoUrl
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-
-          if (typeof data.error === "string") {
-            status.innerText =
-              data.error;
-          } else {
-            status.innerText =
-              data.error?.message ||
-              JSON.stringify(data);
+              current += " " + word;
+            }
           }
 
+
+          if (current.trim()) {
+            scenes.push(current.trim());
+          }
+        }
+      }
+
+
+      return scenes.slice(0, 8);
+    }
+
+
+    // =====================================
+    // DESSIN D'UNE IMAGE VIDÉO
+    // =====================================
+
+    function drawFrame(
+      ctx,
+      canvas,
+      text,
+      sceneNumber,
+      totalScenes,
+      progress
+    ) {
+
+      const width =
+        canvas.width;
+
+      const height =
+        canvas.height;
+
+
+      // Fond animé
+
+      const gradient =
+        ctx.createLinearGradient(
+          0,
+          0,
+          width,
+          height
+        );
+
+
+      gradient.addColorStop(
+        0,
+        `hsl(${220 + progress * 30}, 70%, 20%)`
+      );
+
+      gradient.addColorStop(
+        1,
+        `hsl(${280 + progress * 20}, 75%, 12%)`
+      );
+
+
+      ctx.fillStyle =
+        gradient;
+
+      ctx.fillRect(
+        0,
+        0,
+        width,
+        height
+      );
+
+
+      // Petit cercle animé
+
+      ctx.beginPath();
+
+      ctx.arc(
+        width * 0.82,
+        height * 0.16,
+        80 + Math.sin(progress * Math.PI * 2) * 20,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fillStyle =
+        "rgba(255,255,255,0.08)";
+
+      ctx.fill();
+
+
+      // Nom de la chaîne
+
+      ctx.fillStyle =
+        "rgba(255,255,255,0.75)";
+
+      ctx.font =
+        "bold 30px Arial";
+
+      ctx.textAlign =
+        "center";
+
+      ctx.fillText(
+        "TikTok Astuce Cash",
+        width / 2,
+        100
+      );
+
+
+      // Texte principal
+
+      ctx.font =
+        "bold 50px Arial";
+
+      ctx.fillStyle =
+        "white";
+
+      ctx.textAlign =
+        "center";
+
+
+      const lines =
+        wrapText(
+          ctx,
+          text,
+          width - 100
+        );
+
+
+      const lineHeight =
+        68;
+
+
+      const totalHeight =
+        lines.length * lineHeight;
+
+
+      let y =
+        height / 2 -
+        totalHeight / 2;
+
+
+      for (const line of lines) {
+
+        ctx.fillText(
+          line,
+          width / 2,
+          y
+        );
+
+        y +=
+          lineHeight;
+      }
+
+
+      // Barre de progression
+
+      const barWidth =
+        width - 100;
+
+
+      ctx.fillStyle =
+        "rgba(255,255,255,0.20)";
+
+      ctx.fillRect(
+        50,
+        height - 110,
+        barWidth,
+        12
+      );
+
+
+      ctx.fillStyle =
+        "white";
+
+      ctx.fillRect(
+        50,
+        height - 110,
+        barWidth *
+          (
+            (sceneNumber + progress) /
+            totalScenes
+          ),
+        12
+      );
+    }
+
+
+    // =====================================
+    // GÉNÉRATION DE LA VIDÉO
+    // =====================================
+
+    document.getElementById("makeVideo").onclick =
+      async () => {
+
+        const script =
+          document
+            .getElementById("generatedContent")
+            .innerText
+            .trim();
+
+
+        const status =
+          document.getElementById("videoStatus");
+
+
+        if (!script) {
+
+          status.innerText =
+            "Génère d'abord le contenu.";
+
           return;
         }
 
-        lastPublishId =
-          data.publish_id || "";
 
-        document
-          .getElementById("publishId")
-          .innerText =
-            lastPublishId || "Non reçu";
+        if (
+          typeof MediaRecorder === "undefined"
+        ) {
 
-        status.innerText =
-          data.message ||
-          "Vidéo acceptée par TikTok.";
+          status.innerText =
+            "Ton navigateur ne supporte pas la génération vidéo.";
 
-      } catch (error) {
+          return;
+        }
+
 
         status.innerText =
-          "Erreur pendant l'envoi TikTok.";
+          "Création de la vidéo 720×1280...";
 
-        console.error(error);
-      }
-    };
 
-    // ========================================
-    // 4. VÉRIFICATION DU STATUT TIKTOK
-    // ========================================
+        const canvas =
+          document.getElementById("videoCanvas");
 
-    document.getElementById("checkStatus").onclick = async () => {
 
-      const output =
-        document.getElementById("tiktokStatus");
+        const ctx =
+          canvas.getContext("2d");
 
-      if (!lastPublishId) {
-        output.innerText =
-          "Aucun publish_id disponible.";
-        return;
-      }
 
-      output.innerText =
-        "Vérification en cours...";
+        const scenes =
+          splitIntoScenes(script);
 
-      try {
 
-        const response = await fetch("/api/status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            publish_id: lastPublishId
-          })
-        });
+        if (!scenes.length) {
 
-        const data =
-          await response.json();
+          status.innerText =
+            "Impossible de préparer les scènes.";
 
-        output.innerText =
-          JSON.stringify(
-            data,
-            null,
-            2
+          return;
+        }
+
+
+        const fps =
+          30;
+
+
+        const sceneDuration =
+          2.5;
+
+
+        const totalDuration =
+          Math.min(
+            20,
+            scenes.length *
+              sceneDuration
           );
 
-      } catch (error) {
+
+        const stream =
+          canvas.captureStream(fps);
+
+
+        let mimeType =
+          "video/webm";
+
+
+        if (
+          MediaRecorder.isTypeSupported(
+            "video/webm;codecs=vp9"
+          )
+        ) {
+
+          mimeType =
+            "video/webm;codecs=vp9";
+
+        } else if (
+          MediaRecorder.isTypeSupported(
+            "video/webm;codecs=vp8"
+          )
+        ) {
+
+          mimeType =
+            "video/webm;codecs=vp8";
+        }
+
+
+        const recorder =
+          new MediaRecorder(
+            stream,
+            {
+              mimeType: mimeType,
+
+              videoBitsPerSecond:
+                900000
+            }
+          );
+
+
+        const chunks =
+          [];
+
+
+        recorder.ondataavailable =
+          event => {
+
+            if (
+              event.data &&
+              event.data.size > 0
+            ) {
+
+              chunks.push(
+                event.data
+              );
+            }
+          };
+
+
+        const completed =
+          new Promise(resolve => {
+
+            recorder.onstop =
+              resolve;
+          });
+
+
+        recorder.start();
+
+
+        const start =
+          performance.now();
+
+
+        await new Promise(resolve => {
+
+          function animate(now) {
+
+            const elapsed =
+              (now - start) /
+              1000;
+
+
+            if (
+              elapsed >=
+              totalDuration
+            ) {
+
+              resolve();
+
+              return;
+            }
+
+
+            const sceneIndex =
+              Math.min(
+                scenes.length - 1,
+                Math.floor(
+                  elapsed /
+                  sceneDuration
+                )
+              );
+
+
+            const sceneProgress =
+              (
+                elapsed %
+                sceneDuration
+              ) /
+              sceneDuration;
+
+
+            drawFrame(
+              ctx,
+              canvas,
+              scenes[sceneIndex],
+              sceneIndex,
+              scenes.length,
+              sceneProgress
+            );
+
+
+            requestAnimationFrame(
+              animate
+            );
+          }
+
+
+          requestAnimationFrame(
+            animate
+          );
+        });
+
+
+        recorder.stop();
+
+
+        await completed;
+
+
+        generatedVideoBlob =
+          new Blob(
+            chunks,
+            {
+              type: "video/webm"
+            }
+          );
+
+
+        const previewUrl =
+          URL.createObjectURL(
+            generatedVideoBlob
+          );
+
+
+        const preview =
+          document.getElementById(
+            "videoPreview"
+          );
+
+
+        preview.src =
+          previewUrl;
+
+        preview.style.display =
+          "block";
+
+
+        status.innerText =
+          "Vidéo créée : 720×1280. Tu peux la prévisualiser.";
+
+      };
+
+
+    // =====================================
+    // ENVOI DU FICHIER LOCAL VERS TIKTOK
+    // =====================================
+
+    document.getElementById("sendTikTok").onclick =
+      async () => {
+
+        const status =
+          document.getElementById(
+            "uploadStatus"
+          );
+
+
+        if (!generatedVideoBlob) {
+
+          status.innerText =
+            "Crée d'abord la vidéo.";
+
+          return;
+        }
+
+
+        status.innerText =
+          "Envoi de la vidéo vers TikTok...";
+
+
+        try {
+
+          const response =
+            await fetch(
+              "/api/upload-local",
+              {
+
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "video/webm"
+                },
+
+                body:
+                  generatedVideoBlob
+
+              }
+            );
+
+
+          const data =
+            await response.json();
+
+
+          if (
+            !response.ok ||
+            !data.success
+          ) {
+
+            status.innerText =
+              typeof data.error === "string"
+                ? data.error
+                : JSON.stringify(data);
+
+            return;
+          }
+
+
+          lastPublishId =
+            data.publish_id ||
+            "";
+
+
+          document
+            .getElementById(
+              "publishId"
+            )
+            .innerText =
+              lastPublishId ||
+              "Non reçu";
+
+
+          status.innerText =
+            data.message ||
+            "Vidéo envoyée à TikTok.";
+
+
+        } catch (error) {
+
+          status.innerText =
+            "Erreur pendant l'envoi.";
+
+          console.error(error);
+        }
+      };
+
+
+    // =====================================
+    // STATUT TIKTOK
+    // =====================================
+
+    document.getElementById("checkStatus").onclick =
+      async () => {
+
+        const output =
+          document.getElementById(
+            "tiktokStatus"
+          );
+
+
+        if (!lastPublishId) {
+
+          output.innerText =
+            "Aucun Publish ID.";
+
+          return;
+        }
+
 
         output.innerText =
-          "Erreur pendant la vérification.";
+          "Vérification en cours...";
 
-        console.error(error);
-      }
-    };
+
+        try {
+
+          const response =
+            await fetch(
+              "/api/status",
+              {
+
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    publish_id:
+                      lastPublishId
+                  })
+
+              }
+            );
+
+
+          const data =
+            await response.json();
+
+
+          output.innerText =
+            JSON.stringify(
+              data,
+              null,
+              2
+            );
+
+
+        } catch (error) {
+
+          output.innerText =
+            "Erreur pendant la vérification.";
+
+          console.error(error);
+        }
+      };
 
   </script>
 
