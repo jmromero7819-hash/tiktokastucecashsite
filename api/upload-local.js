@@ -46,6 +46,20 @@ export default async function handler(req, res) {
   }
 
   try {
+    const contentType =
+      (req.headers["content-type"] || "")
+        .split(";")[0]
+        .trim()
+        .toLowerCase();
+
+    if (contentType !== "video/mp4") {
+      return res.status(415).json({
+        error: "Format vidéo invalide",
+        received_content_type: contentType,
+        expected_content_type: "video/mp4"
+      });
+    }
+
     const videoBuffer =
       await readRawBody(req);
 
@@ -63,13 +77,12 @@ export default async function handler(req, res) {
 
     if (videoSize > MAX_SINGLE_CHUNK) {
       return res.status(400).json({
-        error:
-          "La vidéo dépasse 64 Mo.",
+        error: "La vidéo dépasse 64 Mo.",
         video_size: videoSize
       });
     }
 
-    // 1. Initialisation de l'upload TikTok
+    // 1. Initialiser l'upload TikTok
     const initResponse = await fetch(
       "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/",
       {
@@ -115,13 +128,12 @@ export default async function handler(req, res) {
     const publishId =
       initData.data.publish_id;
 
-    // 2. Envoi réel du WebM
+    // 2. Envoyer le vrai MP4 à TikTok
     const uploadResponse =
       await fetch(uploadUrl, {
         method: "PUT",
         headers: {
-          "Content-Type":
-            "video/webm",
+          "Content-Type": "video/mp4",
           "Content-Length":
             String(videoSize),
           "Content-Range":
@@ -147,8 +159,9 @@ export default async function handler(req, res) {
       success: true,
       publish_id: publishId,
       video_size: videoSize,
+      content_type: contentType,
       message:
-        "Vidéo 720×1280 transférée vers TikTok."
+        "Vidéo MP4 720×1280 transférée vers TikTok."
     });
 
   } catch (error) {
