@@ -36,6 +36,10 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           template_id: process.env.CREATOMATE_TEMPLATE_ID,
+
+          // Force le rendu à 100 % de la résolution du template
+          render_scale: 1,
+
           modifications: {
             "Voiceover-1.source": script,
             "Voiceover-2.source": script,
