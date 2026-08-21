@@ -1,510 +1,121 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TikTok Astuce Cash</title>
-</head>
+// ========================================
+// 2B. VÉRIFICATION DU RENDU CREATOMATE
+// ========================================
 
-<body>
+document.getElementById("checkRenderStatus").onclick = async () => {
 
-  <h1>TikTok Astuce Cash</h1>
+  const output =
+    document.getElementById("renderCheckStatus");
 
-  <p>
-    TikTok Astuce Cash est une application qui utilise l'intelligence artificielle
-    pour créer du contenu éducatif autour des astuces pour économiser et mieux gérer son argent.
-  </p>
+  const renderStatus =
+    document.getElementById("renderStatus");
 
-  <p>
-    L'application permet de préparer et publier du contenu TikTok
-    avec l'autorisation de l'utilisateur.
-  </p>
+  const renderUrl =
+    document.getElementById("renderUrl");
 
-  <hr>
+  const debug =
+    document.getElementById("creatomateDebug");
 
-  <p><a href="privacy.html">Politique de confidentialité</a></p>
-  <p><a href="terms.html">Conditions d'utilisation</a></p>
-  <p><a href="/api/login">Se connecter avec TikTok</a></p>
+  if (!lastRenderId) {
+    output.innerText =
+      "Aucun Render ID disponible.";
+    return;
+  }
 
-  <hr>
+  output.innerText =
+    "Vérification du rendu...";
 
-  <h2>1. Générer le contenu</h2>
+  try {
 
-  <button id="generateContent">
-    Générer automatiquement
-  </button>
+    const response = await fetch("/api/render-status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        render_id: lastRenderId
+      })
+    });
 
-  <p id="generatedContent"></p>
+    const data = await response.json();
 
-  <hr>
+    // IMPORTANT :
+    // remplace l'ancien JSON par la réponse actuelle
+    debug.innerText =
+      JSON.stringify(data, null, 2);
 
-  <h2>2. Créer la vidéo</h2>
+    if (!response.ok || !data.success) {
+      output.innerText =
+        data.error ||
+        "Erreur pendant la vérification Creatomate.";
+      return;
+    }
 
-  <button id="generateVideo">
-    Créer la vidéo automatiquement
-  </button>
+    let render = data.render;
 
-  <p id="videoStatus"></p>
+    if (Array.isArray(render)) {
+      render = render[0];
+    }
 
-  <p>
-    Render ID :
-    <strong id="renderId">Aucun</strong>
-  </p>
+    if (render && render.data) {
+      render = render.data;
+    }
 
-  <p>
-    Statut Creatomate :
-    <strong id="renderStatus">Aucun</strong>
-  </p>
+    if (!render) {
+      output.innerText =
+        "Aucune information de rendu reçue.";
+      return;
+    }
 
-  <p>
-    URL Creatomate :
-    <span id="renderUrl">Aucune</span>
-  </p>
+    const currentStatus =
+      render.status ||
+      "Statut inconnu";
 
-  <button id="checkRenderStatus">
-    Vérifier le rendu Creatomate
-  </button>
+    const url =
+      render.url ||
+      render.output_url ||
+      "";
 
-  <p id="renderCheckStatus"></p>
+    const errorMessage =
+      render.error_message ||
+      render.error ||
+      "";
 
-  <pre id="creatomateDebug"></pre>
+    renderStatus.innerText =
+      currentStatus;
 
-  <hr>
+    renderUrl.innerText =
+      url || "Pas encore disponible";
 
-  <h2>3. Envoyer vers TikTok</h2>
+    if (currentStatus === "succeeded" && url) {
 
-  <input
-    id="videoUrl"
-    type="url"
-    size="70"
-    placeholder="URL de la vidéo"
-  >
-
-  <button id="testUpload">
-    Envoyer la vidéo vers TikTok
-  </button>
-
-  <p id="uploadStatus"></p>
-
-  <hr>
-
-  <h2>4. Vérifier TikTok</h2>
-
-  <p>
-    Publish ID :
-    <strong id="publishId">Aucun</strong>
-  </p>
-
-  <button id="checkStatus">
-    Vérifier le statut TikTok
-  </button>
-
-  <pre id="tiktokStatus"></pre>
-
-
-  <script>
-
-    let lastPublishId = "";
-    let lastRenderId = "";
-
-
-    // ========================================
-    // 1. GÉNÉRATION DU CONTENU AVEC OPENAI
-    // ========================================
-
-    document.getElementById("generateContent").onclick = async () => {
-
-      const output =
-        document.getElementById("generatedContent");
+      document.getElementById("videoUrl").value =
+        url;
 
       output.innerText =
-        "Génération du contenu en cours...";
+        "Vidéo terminée. L'URL a été ajoutée automatiquement.";
 
-      try {
-
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          output.innerText =
-            data.error ||
-            "Erreur pendant la génération.";
-          return;
-        }
-
-        output.innerText =
-          data.content ||
-          data.error ||
-          JSON.stringify(data);
-
-      } catch (error) {
-
-        output.innerText =
-          "Erreur pendant la génération.";
-
-        console.error(error);
-      }
-    };
-
-
-    // ========================================
-    // 2. CRÉATION DE LA VIDÉO CREATOMATE
-    // ========================================
-
-    document.getElementById("generateVideo").onclick = async () => {
-
-      const script =
-        document
-          .getElementById("generatedContent")
-          .innerText
-          .trim();
-
-      const status =
-        document.getElementById("videoStatus");
-
-      const renderId =
-        document.getElementById("renderId");
-
-      const renderStatus =
-        document.getElementById("renderStatus");
-
-      const renderUrl =
-        document.getElementById("renderUrl");
-
-      const debug =
-        document.getElementById("creatomateDebug");
-
-      if (!script) {
-        status.innerText =
-          "Génère d'abord le contenu.";
-        return;
-      }
-
-      status.innerText =
-        "Création de la vidéo en cours...";
-
-      renderId.innerText = "En attente...";
-      renderStatus.innerText = "En attente...";
-      renderUrl.innerText = "En attente...";
-      debug.innerText = "";
-
-      try {
-
-        const response = await fetch("/api/render", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            script: script
-          })
-        });
-
-        const data = await response.json();
-
-        debug.innerText =
-          JSON.stringify(data, null, 2);
-
-        if (!response.ok || !data.success) {
-          status.innerText =
-            data.error ||
-            "Erreur Creatomate.";
-          renderStatus.innerText =
-            "Erreur";
-          return;
-        }
-
-        let render = data.render;
-
-        if (Array.isArray(render)) {
-          render = render[0];
-        }
-
-        if (render && render.data) {
-          render = render.data;
-        }
-
-        if (!render) {
-          status.innerText =
-            "Creatomate a répondu, mais aucun rendu n'a été trouvé.";
-          renderStatus.innerText =
-            "Rendu introuvable";
-          return;
-        }
-
-        const id =
-          render.id ||
-          render.render_id ||
-          "";
-
-        const currentStatus =
-          render.status ||
-          "Statut non fourni";
-
-        const url =
-          render.url ||
-          render.output_url ||
-          "";
-
-        lastRenderId = id;
-
-        renderId.innerText =
-          id || "Non reçu";
-
-        renderStatus.innerText =
-          currentStatus;
-
-        renderUrl.innerText =
-          url || "Pas encore disponible";
-
-        if (currentStatus === "succeeded" && url) {
-          document.getElementById("videoUrl").value = url;
-          status.innerText =
-            "Vidéo Creatomate terminée et prête.";
-        } else {
-          status.innerText =
-            "Rendu Creatomate créé. Clique sur « Vérifier le rendu Creatomate ».";
-        }
-
-      } catch (error) {
-
-        status.innerText =
-          "Erreur de connexion avec Creatomate.";
-
-        renderStatus.innerText =
-          "Erreur";
-
-        debug.innerText =
-          error.message;
-      }
-    };
-
-
-    // ========================================
-    // 2B. VÉRIFICATION DU RENDU CREATOMATE
-    // ========================================
-
-    document.getElementById("checkRenderStatus").onclick = async () => {
-
-      const output =
-        document.getElementById("renderCheckStatus");
-
-      const renderStatus =
-        document.getElementById("renderStatus");
-
-      const renderUrl =
-        document.getElementById("renderUrl");
-
-      if (!lastRenderId) {
-        output.innerText =
-          "Aucun Render ID disponible.";
-        return;
-      }
+    } else if (currentStatus === "failed") {
 
       output.innerText =
-        "Vérification du rendu...";
+        errorMessage
+          ? "Échec Creatomate : " + errorMessage
+          : "Le rendu Creatomate a échoué. Consulte le JSON ci-dessous.";
 
-      try {
-
-        const response = await fetch("/api/render-status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            render_id: lastRenderId
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          output.innerText =
-            data.error ||
-            "Erreur pendant la vérification Creatomate.";
-          return;
-        }
-
-        let render = data.render;
-
-        if (Array.isArray(render)) {
-          render = render[0];
-        }
-
-        if (render && render.data) {
-          render = render.data;
-        }
-
-        const currentStatus =
-          render?.status ||
-          "Statut inconnu";
-
-        const url =
-          render?.url ||
-          render?.output_url ||
-          "";
-
-        renderStatus.innerText =
-          currentStatus;
-
-        renderUrl.innerText =
-          url || "Pas encore disponible";
-
-        if (currentStatus === "succeeded" && url) {
-
-          document.getElementById("videoUrl").value =
-            url;
-
-          output.innerText =
-            "Vidéo terminée. L'URL a été ajoutée automatiquement.";
-
-        } else if (currentStatus === "failed") {
-
-          output.innerText =
-            "Le rendu Creatomate a échoué.";
-
-        } else {
-
-          output.innerText =
-            "Le rendu est encore en cours : " + currentStatus;
-        }
-
-      } catch (error) {
-
-        output.innerText =
-          "Erreur pendant la vérification du rendu.";
-
-        console.error(error);
-      }
-    };
-
-
-    // ========================================
-    // 3. ENVOI DE LA VIDÉO VERS TIKTOK
-    // ========================================
-
-    document.getElementById("testUpload").onclick = async () => {
-
-      const videoUrl =
-        document
-          .getElementById("videoUrl")
-          .value
-          .trim();
-
-      const status =
-        document.getElementById("uploadStatus");
-
-      if (!videoUrl) {
-        status.innerText =
-          "Aucune URL vidéo.";
-        return;
-      }
-
-      status.innerText =
-        "Envoi vers TikTok...";
-
-      try {
-
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            video_url: videoUrl
-          })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-
-          if (typeof data.error === "string") {
-            status.innerText =
-              data.error;
-          } else {
-            status.innerText =
-              data.error?.message ||
-              JSON.stringify(data);
-          }
-
-          return;
-        }
-
-        lastPublishId =
-          data.publish_id || "";
-
-        document
-          .getElementById("publishId")
-          .innerText =
-            lastPublishId || "Non reçu";
-
-        status.innerText =
-          data.message ||
-          "Vidéo acceptée par TikTok.";
-
-      } catch (error) {
-
-        status.innerText =
-          "Erreur pendant l'envoi TikTok.";
-      }
-    };
-
-
-    // ========================================
-    // 4. VÉRIFICATION DU STATUT TIKTOK
-    // ========================================
-
-    document.getElementById("checkStatus").onclick = async () => {
-
-      const output =
-        document.getElementById("tiktokStatus");
-
-      if (!lastPublishId) {
-        output.innerText =
-          "Aucun publish_id disponible.";
-        return;
-      }
+    } else {
 
       output.innerText =
-        "Vérification en cours...";
+        "Le rendu est encore en cours : " + currentStatus;
+    }
 
-      try {
+  } catch (error) {
 
-        const response = await fetch("/api/status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            publish_id: lastPublishId
-          })
-        });
+    output.innerText =
+      "Erreur pendant la vérification du rendu.";
 
-        const data =
-          await response.json();
+    debug.innerText =
+      error.message;
 
-        output.innerText =
-          JSON.stringify(
-            data,
-            null,
-            2
-          );
-
-      } catch (error) {
-
-        output.innerText =
-          "Erreur pendant la vérification.";
-      }
-    };
-
-  </script>
-
-</body>
-</html>
+    console.error(error);
+  }
+};
