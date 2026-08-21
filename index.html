@@ -29,6 +29,13 @@
       background: black;
     }
 
+    #voicePreview {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 10px;
+      display: none;
+    }
+
     pre {
       white-space: pre-wrap;
       word-wrap: break-word;
@@ -67,6 +74,19 @@
   </button>
 
   <pre id="generatedContent"></pre>
+
+  <h3>Voix off</h3>
+
+  <button id="generateVoice">
+    Générer la voix off
+  </button>
+
+  <p id="voiceStatus"></p>
+
+  <audio
+    id="voicePreview"
+    controls
+  ></audio>
 
   <hr>
 
@@ -118,7 +138,13 @@
   <script>
 
     let generatedVideoBlob = null;
+    let generatedVoiceBlob = null;
     let lastPublishId = "";
+
+
+    // =====================================
+    // 1. GÉNÉRATION DU CONTENU
+    // =====================================
 
     document.getElementById("generateContent").onclick = async () => {
 
@@ -127,6 +153,14 @@
 
       output.innerText =
         "Génération du contenu en cours...";
+
+      generatedVoiceBlob = null;
+
+      document.getElementById("voicePreview").style.display =
+        "none";
+
+      document.getElementById("voiceStatus").innerText =
+        "";
 
       try {
 
@@ -142,9 +176,11 @@
           await response.json();
 
         if (!response.ok) {
+
           output.innerText =
             data.error ||
             "Erreur pendant la génération.";
+
           return;
         }
 
@@ -161,6 +197,123 @@
       }
     };
 
+
+    // =====================================
+    // 1B. GÉNÉRATION DE LA VOIX ELEVENLABS
+    // =====================================
+
+    document.getElementById("generateVoice").onclick =
+      async () => {
+
+        const text =
+          document
+            .getElementById("generatedContent")
+            .innerText
+            .trim();
+
+        const status =
+          document.getElementById("voiceStatus");
+
+        const preview =
+          document.getElementById("voicePreview");
+
+        if (!text) {
+
+          status.innerText =
+            "Génère d'abord le contenu.";
+
+          return;
+        }
+
+        status.innerText =
+          "Génération de la voix off...";
+
+        preview.style.display =
+          "none";
+
+        generatedVoiceBlob =
+          null;
+
+        try {
+
+          const response =
+            await fetch("/api/voice", {
+
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json"
+              },
+
+              body: JSON.stringify({
+                text
+              })
+            });
+
+          if (!response.ok) {
+
+            let message =
+              "Erreur pendant la génération de la voix.";
+
+            try {
+
+              const data =
+                await response.json();
+
+              message =
+                data.error ||
+                data.details ||
+                message;
+
+            } catch {
+              // La réponse n'était pas du JSON.
+            }
+
+            status.innerText =
+              message;
+
+            return;
+          }
+
+          generatedVoiceBlob =
+            await response.blob();
+
+          if (!generatedVoiceBlob.size) {
+
+            status.innerText =
+              "ElevenLabs a renvoyé un fichier audio vide.";
+
+            return;
+          }
+
+          const audioUrl =
+            URL.createObjectURL(
+              generatedVoiceBlob
+            );
+
+          preview.src =
+            audioUrl;
+
+          preview.style.display =
+            "block";
+
+          status.innerText =
+            "Voix off créée. Tu peux l'écouter.";
+
+        } catch (error) {
+
+          status.innerText =
+            "Erreur de connexion avec ElevenLabs : " +
+            error.message;
+
+          console.error(error);
+        }
+      };
+
+
+    // =====================================
+    // OUTILS TEXTE
+    // =====================================
 
     function wrapText(ctx, text, maxWidth) {
 
@@ -182,10 +335,16 @@
           ctx.measureText(testLine).width > maxWidth &&
           currentLine
         ) {
+
           lines.push(currentLine);
-          currentLine = word;
+
+          currentLine =
+            word;
+
         } else {
-          currentLine = testLine;
+
+          currentLine =
+            testLine;
         }
       }
 
@@ -219,6 +378,7 @@
           .filter(Boolean);
 
       if (pieces.length < 4) {
+
         pieces =
           cleaned
             .split(/[.!?]+/)
@@ -226,7 +386,8 @@
             .filter(Boolean);
       }
 
-      const scenes = [];
+      const scenes =
+        [];
 
       for (const piece of pieces) {
 
@@ -239,23 +400,33 @@
           const words =
             piece.split(" ");
 
-          let current = "";
+          let current =
+            "";
 
           for (const word of words) {
 
-            if ((current + " " + word).length > 160) {
+            if (
+              (current + " " + word).length > 160
+            ) {
 
-              scenes.push(current.trim());
-              current = word;
+              scenes.push(
+                current.trim()
+              );
+
+              current =
+                word;
 
             } else {
 
-              current += " " + word;
+              current +=
+                " " + word;
             }
           }
 
           if (current.trim()) {
-            scenes.push(current.trim());
+            scenes.push(
+              current.trim()
+            );
           }
         }
       }
@@ -263,6 +434,10 @@
       return scenes.slice(0, 8);
     }
 
+
+    // =====================================
+    // DESSIN DE LA VIDÉO
+    // =====================================
 
     function drawFrame(
       ctx,
@@ -312,7 +487,12 @@
       ctx.arc(
         width * 0.82,
         height * 0.16,
-        80 + Math.sin(progress * Math.PI * 2) * 20,
+        80 +
+          Math.sin(
+            progress *
+            Math.PI *
+            2
+          ) * 20,
         0,
         Math.PI * 2
       );
@@ -357,7 +537,8 @@
         68;
 
       const totalHeight =
-        lines.length * lineHeight;
+        lines.length *
+        lineHeight;
 
       let y =
         height / 2 -
@@ -371,7 +552,8 @@
           y
         );
 
-        y += lineHeight;
+        y +=
+          lineHeight;
       }
 
       const barWidth =
@@ -395,13 +577,20 @@
         height - 110,
         barWidth *
           (
-            (sceneNumber + progress) /
+            (
+              sceneNumber +
+              progress
+            ) /
             totalScenes
           ),
         12
       );
     }
 
+
+    // =====================================
+    // 2. GÉNÉRATION VIDÉO MP4
+    // =====================================
 
     document.getElementById("makeVideo").onclick =
       async () => {
@@ -416,16 +605,20 @@
           document.getElementById("videoStatus");
 
         if (!script) {
+
           status.innerText =
             "Génère d'abord le contenu.";
+
           return;
         }
 
         if (
           typeof MediaRecorder === "undefined"
         ) {
+
           status.innerText =
             "Ton navigateur ne supporte pas la génération vidéo.";
+
           return;
         }
 
@@ -435,7 +628,9 @@
         try {
 
           const canvas =
-            document.getElementById("videoCanvas");
+            document.getElementById(
+              "videoCanvas"
+            );
 
           const ctx =
             canvas.getContext("2d");
@@ -444,18 +639,24 @@
             splitIntoScenes(script);
 
           if (!scenes.length) {
+
             status.innerText =
               "Impossible de préparer les scènes.";
+
             return;
           }
 
-          const fps = 30;
-          const sceneDuration = 2.5;
+          const fps =
+            30;
+
+          const sceneDuration =
+            2.5;
 
           const totalDuration =
             Math.min(
               20,
-              scenes.length * sceneDuration
+              scenes.length *
+              sceneDuration
             );
 
           const stream =
@@ -468,13 +669,17 @@
           ];
 
           const mimeType =
-            mp4Types.find(type =>
-              MediaRecorder.isTypeSupported(type)
+            mp4Types.find(
+              type =>
+                MediaRecorder
+                  .isTypeSupported(type)
             );
 
           if (!mimeType) {
+
             status.innerText =
-              "Ce navigateur ne permet pas de créer directement une vidéo MP4/H.264. Essaie avec la dernière version de Chrome ou Edge.";
+              "Ce navigateur ne permet pas de créer directement une vidéo MP4/H.264.";
+
             return;
           }
 
@@ -483,11 +688,13 @@
               stream,
               {
                 mimeType,
-                videoBitsPerSecond: 1200000
+                videoBitsPerSecond:
+                  1200000
               }
             );
 
-          const chunks = [];
+          const chunks =
+            [];
 
           recorder.ondataavailable =
             event => {
@@ -496,14 +703,21 @@
                 event.data &&
                 event.data.size > 0
               ) {
-                chunks.push(event.data);
+
+                chunks.push(
+                  event.data
+                );
               }
             };
 
           const completed =
-            new Promise(resolve => {
-              recorder.onstop = resolve;
-            });
+            new Promise(
+              resolve => {
+
+                recorder.onstop =
+                  resolve;
+              }
+            );
 
           drawFrame(
             ctx,
@@ -516,64 +730,76 @@
 
           recorder.start(1000);
 
-          await new Promise(resolve => {
+          await new Promise(
+            resolve => {
 
-            let elapsed = 0;
+              let elapsed =
+                0;
 
-            const frameInterval =
-              1000 / fps;
+              const frameInterval =
+                1000 / fps;
 
-            const timer =
-              setInterval(() => {
+              const timer =
+                setInterval(() => {
 
-                elapsed +=
-                  frameInterval / 1000;
+                  elapsed +=
+                    frameInterval /
+                    1000;
 
-                if (
-                  elapsed >=
-                  totalDuration
-                ) {
+                  if (
+                    elapsed >=
+                    totalDuration
+                  ) {
 
-                  clearInterval(timer);
-                  resolve();
-                  return;
-                }
+                    clearInterval(
+                      timer
+                    );
 
-                const sceneIndex =
-                  Math.min(
-                    scenes.length - 1,
-                    Math.floor(
-                      elapsed /
+                    resolve();
+
+                    return;
+                  }
+
+                  const sceneIndex =
+                    Math.min(
+                      scenes.length - 1,
+                      Math.floor(
+                        elapsed /
+                        sceneDuration
+                      )
+                    );
+
+                  const sceneProgress =
+                    (
+                      elapsed %
                       sceneDuration
-                    )
+                    ) /
+                    sceneDuration;
+
+                  drawFrame(
+                    ctx,
+                    canvas,
+                    scenes[
+                      sceneIndex
+                    ],
+                    sceneIndex,
+                    scenes.length,
+                    sceneProgress
                   );
 
-                const sceneProgress =
-                  (
-                    elapsed %
-                    sceneDuration
-                  ) /
-                  sceneDuration;
-
-                drawFrame(
-                  ctx,
-                  canvas,
-                  scenes[sceneIndex],
-                  sceneIndex,
-                  scenes.length,
-                  sceneProgress
-                );
-
-              }, frameInterval);
-          });
+                }, frameInterval);
+            }
+          );
 
           recorder.stop();
 
           await completed;
 
           if (!chunks.length) {
+
             status.innerText =
               "Aucune donnée vidéo n'a été générée.";
+
             return;
           }
 
@@ -581,13 +807,18 @@
             new Blob(
               chunks,
               {
-                type: mimeType
+                type:
+                  mimeType
               }
             );
 
-          if (!generatedVideoBlob.size) {
+          if (
+            !generatedVideoBlob.size
+          ) {
+
             status.innerText =
               "La vidéo générée est vide.";
+
             return;
           }
 
@@ -621,6 +852,10 @@
       };
 
 
+    // =====================================
+    // 3. ENVOI TIKTOK
+    // =====================================
+
     document.getElementById("sendTikTok").onclick =
       async () => {
 
@@ -646,12 +881,15 @@
             await fetch(
               "/api/upload-local",
               {
-                method: "POST",
+                method:
+                  "POST",
+
                 headers: {
                   "Content-Type":
                     generatedVideoBlob.type ||
                     "video/mp4"
                 },
+
                 body:
                   generatedVideoBlob
               }
@@ -666,18 +904,24 @@
           ) {
 
             status.innerText =
-              typeof data.error === "string"
+              typeof data.error ===
+              "string"
                 ? data.error
-                : JSON.stringify(data);
+                : JSON.stringify(
+                    data
+                  );
 
             return;
           }
 
           lastPublishId =
-            data.publish_id || "";
+            data.publish_id ||
+            "";
 
           document
-            .getElementById("publishId")
+            .getElementById(
+              "publishId"
+            )
             .innerText =
               lastPublishId ||
               "Non reçu";
@@ -695,6 +939,10 @@
         }
       };
 
+
+    // =====================================
+    // 4. STATUT TIKTOK
+    // =====================================
 
     document.getElementById("checkStatus").onclick =
       async () => {
@@ -721,11 +969,14 @@
             await fetch(
               "/api/status",
               {
-                method: "POST",
+                method:
+                  "POST",
+
                 headers: {
                   "Content-Type":
                     "application/json"
                 },
+
                 body:
                   JSON.stringify({
                     publish_id:
