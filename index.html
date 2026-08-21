@@ -60,11 +60,6 @@
 
   <hr>
 
-
-  <!-- ===================================== -->
-  <!-- 1. GÉNÉRATION DU SCRIPT -->
-  <!-- ===================================== -->
-
   <h2>1. Générer le contenu</h2>
 
   <button id="generateContent">
@@ -73,13 +68,7 @@
 
   <pre id="generatedContent"></pre>
 
-
   <hr>
-
-
-  <!-- ===================================== -->
-  <!-- 2. GÉNÉRATION VIDÉO LOCALE -->
-  <!-- ===================================== -->
 
   <h2>2. Créer la vidéo</h2>
 
@@ -94,13 +83,7 @@
     controls
   ></video>
 
-
   <hr>
-
-
-  <!-- ===================================== -->
-  <!-- 3. ENVOI TIKTOK -->
-  <!-- ===================================== -->
 
   <h2>3. Envoyer vers TikTok</h2>
 
@@ -115,13 +98,7 @@
     <strong id="publishId">Aucun</strong>
   </p>
 
-
   <hr>
-
-
-  <!-- ===================================== -->
-  <!-- 4. STATUT TIKTOK -->
-  <!-- ===================================== -->
 
   <h2>4. Vérifier TikTok</h2>
 
@@ -131,9 +108,6 @@
 
   <pre id="tiktokStatus"></pre>
 
-
-  <!-- Canvas invisible utilisé pour fabriquer la vidéo -->
-
   <canvas
     id="videoCanvas"
     width="720"
@@ -141,16 +115,10 @@
     style="display:none;"
   ></canvas>
 
-
   <script>
 
     let generatedVideoBlob = null;
     let lastPublishId = "";
-
-
-    // =====================================
-    // GÉNÉRATION DU SCRIPT
-    // =====================================
 
     document.getElementById("generateContent").onclick = async () => {
 
@@ -164,34 +132,25 @@
 
         const response =
           await fetch("/api/generate", {
-
             method: "POST",
-
             headers: {
               "Content-Type": "application/json"
             }
-
           });
-
 
         const data =
           await response.json();
 
-
         if (!response.ok) {
-
           output.innerText =
             data.error ||
             "Erreur pendant la génération.";
-
           return;
         }
-
 
         output.innerText =
           data.content ||
           "Aucun contenu généré.";
-
 
       } catch (error) {
 
@@ -203,10 +162,6 @@
     };
 
 
-    // =====================================
-    // OUTILS TEXTE CANVAS
-    // =====================================
-
     function wrapText(ctx, text, maxWidth) {
 
       const words =
@@ -216,7 +171,6 @@
 
       let currentLine = "";
 
-
       for (const word of words) {
 
         const testLine =
@@ -224,27 +178,20 @@
             ? currentLine + " " + word
             : word;
 
-
         if (
           ctx.measureText(testLine).width > maxWidth &&
           currentLine
         ) {
-
           lines.push(currentLine);
-
           currentLine = word;
-
         } else {
-
           currentLine = testLine;
         }
       }
 
-
       if (currentLine) {
         lines.push(currentLine);
       }
-
 
       return lines;
     }
@@ -253,13 +200,9 @@
     function cleanScript(text) {
 
       return text
-
         .replace(/\*\*/g, "")
-
         .replace(/#{1,6}\s?/g, "")
-
         .replace(/\n{3,}/g, "\n\n")
-
         .trim();
     }
 
@@ -269,16 +212,13 @@
       const cleaned =
         cleanScript(text);
 
-
       let pieces =
         cleaned
           .split(/\n\n+/)
           .map(item => item.trim())
           .filter(Boolean);
 
-
       if (pieces.length < 4) {
-
         pieces =
           cleaned
             .split(/[.!?]+/)
@@ -286,9 +226,7 @@
             .filter(Boolean);
       }
 
-
       const scenes = [];
-
 
       for (const piece of pieces) {
 
@@ -303,13 +241,11 @@
 
           let current = "";
 
-
           for (const word of words) {
 
             if ((current + " " + word).length > 160) {
 
               scenes.push(current.trim());
-
               current = word;
 
             } else {
@@ -318,21 +254,15 @@
             }
           }
 
-
           if (current.trim()) {
             scenes.push(current.trim());
           }
         }
       }
 
-
       return scenes.slice(0, 8);
     }
 
-
-    // =====================================
-    // DESSIN D'UNE IMAGE VIDÉO
-    // =====================================
 
     function drawFrame(
       ctx,
@@ -349,9 +279,6 @@
       const height =
         canvas.height;
 
-
-      // Fond animé
-
       const gradient =
         ctx.createLinearGradient(
           0,
@@ -359,7 +286,6 @@
           width,
           height
         );
-
 
       gradient.addColorStop(
         0,
@@ -371,7 +297,6 @@
         `hsl(${280 + progress * 20}, 75%, 12%)`
       );
 
-
       ctx.fillStyle =
         gradient;
 
@@ -381,9 +306,6 @@
         width,
         height
       );
-
-
-      // Petit cercle animé
 
       ctx.beginPath();
 
@@ -400,9 +322,6 @@
 
       ctx.fill();
 
-
-      // Nom de la chaîne
-
       ctx.fillStyle =
         "rgba(255,255,255,0.75)";
 
@@ -418,9 +337,6 @@
         100
       );
 
-
-      // Texte principal
-
       ctx.font =
         "bold 50px Arial";
 
@@ -430,7 +346,6 @@
       ctx.textAlign =
         "center";
 
-
       const lines =
         wrapText(
           ctx,
@@ -438,19 +353,15 @@
           width - 100
         );
 
-
       const lineHeight =
         68;
-
 
       const totalHeight =
         lines.length * lineHeight;
 
-
       let y =
         height / 2 -
         totalHeight / 2;
-
 
       for (const line of lines) {
 
@@ -460,16 +371,11 @@
           y
         );
 
-        y +=
-          lineHeight;
+        y += lineHeight;
       }
-
-
-      // Barre de progression
 
       const barWidth =
         width - 100;
-
 
       ctx.fillStyle =
         "rgba(255,255,255,0.20)";
@@ -480,7 +386,6 @@
         barWidth,
         12
       );
-
 
       ctx.fillStyle =
         "white";
@@ -498,10 +403,6 @@
     }
 
 
-    // =====================================
-    // GÉNÉRATION DE LA VIDÉO
-    // =====================================
-
     document.getElementById("makeVideo").onclick =
       async () => {
 
@@ -511,249 +412,219 @@
             .innerText
             .trim();
 
-
         const status =
           document.getElementById("videoStatus");
 
-
         if (!script) {
-
           status.innerText =
             "Génère d'abord le contenu.";
-
           return;
         }
-
 
         if (
           typeof MediaRecorder === "undefined"
         ) {
-
           status.innerText =
             "Ton navigateur ne supporte pas la génération vidéo.";
-
           return;
         }
-
 
         status.innerText =
           "Création de la vidéo 720×1280...";
 
+        try {
 
-        const canvas =
-          document.getElementById("videoCanvas");
+          const canvas =
+            document.getElementById("videoCanvas");
 
+          const ctx =
+            canvas.getContext("2d");
 
-        const ctx =
-          canvas.getContext("2d");
+          const scenes =
+            splitIntoScenes(script);
 
-
-        const scenes =
-          splitIntoScenes(script);
-
-
-        if (!scenes.length) {
-
-          status.innerText =
-            "Impossible de préparer les scènes.";
-
-          return;
-        }
-
-
-        const fps =
-          30;
-
-
-        const sceneDuration =
-          2.5;
-
-
-        const totalDuration =
-          Math.min(
-            20,
-            scenes.length *
-              sceneDuration
-          );
-
-
-        const stream =
-          canvas.captureStream(fps);
-
-
-        let mimeType =
-          "video/webm";
-
-
-        if (
-          MediaRecorder.isTypeSupported(
-            "video/webm;codecs=vp9"
-          )
-        ) {
-
-          mimeType =
-            "video/webm;codecs=vp9";
-
-        } else if (
-          MediaRecorder.isTypeSupported(
-            "video/webm;codecs=vp8"
-          )
-        ) {
-
-          mimeType =
-            "video/webm;codecs=vp8";
-        }
-
-
-        const recorder =
-          new MediaRecorder(
-            stream,
-            {
-              mimeType: mimeType,
-
-              videoBitsPerSecond:
-                900000
-            }
-          );
-
-
-        const chunks =
-          [];
-
-
-        recorder.ondataavailable =
-          event => {
-
-            if (
-              event.data &&
-              event.data.size > 0
-            ) {
-
-              chunks.push(
-                event.data
-              );
-            }
-          };
-
-
-        const completed =
-          new Promise(resolve => {
-
-            recorder.onstop =
-              resolve;
-          });
-
-
-        recorder.start();
-
-
-        const start =
-          performance.now();
-
-
-        await new Promise(resolve => {
-
-          function animate(now) {
-
-            const elapsed =
-              (now - start) /
-              1000;
-
-
-            if (
-              elapsed >=
-              totalDuration
-            ) {
-
-              resolve();
-
-              return;
-            }
-
-
-            const sceneIndex =
-              Math.min(
-                scenes.length - 1,
-                Math.floor(
-                  elapsed /
-                  sceneDuration
-                )
-              );
-
-
-            const sceneProgress =
-              (
-                elapsed %
-                sceneDuration
-              ) /
-              sceneDuration;
-
-
-            drawFrame(
-              ctx,
-              canvas,
-              scenes[sceneIndex],
-              sceneIndex,
-              scenes.length,
-              sceneProgress
-            );
-
-
-            requestAnimationFrame(
-              animate
-            );
+          if (!scenes.length) {
+            status.innerText =
+              "Impossible de préparer les scènes.";
+            return;
           }
 
+          const fps = 30;
+          const sceneDuration = 2.5;
 
-          requestAnimationFrame(
-            animate
+          const totalDuration =
+            Math.min(
+              20,
+              scenes.length * sceneDuration
+            );
+
+          const stream =
+            canvas.captureStream(fps);
+
+          let mimeType =
+            "video/webm";
+
+          if (
+            MediaRecorder.isTypeSupported(
+              "video/webm;codecs=vp9"
+            )
+          ) {
+            mimeType =
+              "video/webm;codecs=vp9";
+
+          } else if (
+            MediaRecorder.isTypeSupported(
+              "video/webm;codecs=vp8"
+            )
+          ) {
+            mimeType =
+              "video/webm;codecs=vp8";
+          }
+
+          const recorder =
+            new MediaRecorder(
+              stream,
+              {
+                mimeType,
+                videoBitsPerSecond: 900000
+              }
+            );
+
+          const chunks = [];
+
+          recorder.ondataavailable =
+            event => {
+
+              if (
+                event.data &&
+                event.data.size > 0
+              ) {
+                chunks.push(event.data);
+              }
+            };
+
+          const completed =
+            new Promise(resolve => {
+              recorder.onstop = resolve;
+            });
+
+          drawFrame(
+            ctx,
+            canvas,
+            scenes[0],
+            0,
+            scenes.length,
+            0
           );
-        });
 
+          recorder.start(1000);
 
-        recorder.stop();
+          await new Promise(resolve => {
 
+            let elapsed = 0;
 
-        await completed;
+            const frameInterval =
+              1000 / fps;
 
+            const timer =
+              setInterval(() => {
 
-        generatedVideoBlob =
-          new Blob(
-            chunks,
-            {
-              type: "video/webm"
-            }
-          );
+                elapsed +=
+                  frameInterval / 1000;
 
+                if (
+                  elapsed >=
+                  totalDuration
+                ) {
 
-        const previewUrl =
-          URL.createObjectURL(
-            generatedVideoBlob
-          );
+                  clearInterval(timer);
 
+                  resolve();
 
-        const preview =
-          document.getElementById(
-            "videoPreview"
-          );
+                  return;
+                }
 
+                const sceneIndex =
+                  Math.min(
+                    scenes.length - 1,
+                    Math.floor(
+                      elapsed /
+                      sceneDuration
+                    )
+                  );
 
-        preview.src =
-          previewUrl;
+                const sceneProgress =
+                  (
+                    elapsed %
+                    sceneDuration
+                  ) /
+                  sceneDuration;
 
-        preview.style.display =
-          "block";
+                drawFrame(
+                  ctx,
+                  canvas,
+                  scenes[sceneIndex],
+                  sceneIndex,
+                  scenes.length,
+                  sceneProgress
+                );
 
+              }, frameInterval);
+          });
 
-        status.innerText =
-          "Vidéo créée : 720×1280. Tu peux la prévisualiser.";
+          recorder.stop();
 
+          await completed;
+
+          if (!chunks.length) {
+            status.innerText =
+              "Aucune donnée vidéo n'a été générée.";
+            return;
+          }
+
+          generatedVideoBlob =
+            new Blob(
+              chunks,
+              {
+                type: mimeType
+              }
+            );
+
+          if (!generatedVideoBlob.size) {
+            status.innerText =
+              "La vidéo générée est vide.";
+            return;
+          }
+
+          const previewUrl =
+            URL.createObjectURL(
+              generatedVideoBlob
+            );
+
+          const preview =
+            document.getElementById(
+              "videoPreview"
+            );
+
+          preview.src =
+            previewUrl;
+
+          preview.style.display =
+            "block";
+
+          status.innerText =
+            "Vidéo créée : 720×1280. Tu peux la prévisualiser.";
+
+        } catch (error) {
+
+          status.innerText =
+            "Erreur pendant la création vidéo : " +
+            error.message;
+
+          console.error(error);
+        }
       };
 
-
-    // =====================================
-    // ENVOI DU FICHIER LOCAL VERS TIKTOK
-    // =====================================
 
     document.getElementById("sendTikTok").onclick =
       async () => {
@@ -763,7 +634,6 @@
             "uploadStatus"
           );
 
-
         if (!generatedVideoBlob) {
 
           status.innerText =
@@ -772,10 +642,8 @@
           return;
         }
 
-
         status.innerText =
           "Envoi de la vidéo vers TikTok...";
-
 
         try {
 
@@ -783,24 +651,19 @@
             await fetch(
               "/api/upload-local",
               {
-
                 method: "POST",
-
                 headers: {
                   "Content-Type":
+                    generatedVideoBlob.type ||
                     "video/webm"
                 },
-
                 body:
                   generatedVideoBlob
-
               }
             );
 
-
           const data =
             await response.json();
-
 
           if (
             !response.ok ||
@@ -815,25 +678,18 @@
             return;
           }
 
-
           lastPublishId =
-            data.publish_id ||
-            "";
-
+            data.publish_id || "";
 
           document
-            .getElementById(
-              "publishId"
-            )
+            .getElementById("publishId")
             .innerText =
               lastPublishId ||
               "Non reçu";
 
-
           status.innerText =
             data.message ||
             "Vidéo envoyée à TikTok.";
-
 
         } catch (error) {
 
@@ -845,10 +701,6 @@
       };
 
 
-    // =====================================
-    // STATUT TIKTOK
-    // =====================================
-
     document.getElementById("checkStatus").onclick =
       async () => {
 
@@ -856,7 +708,6 @@
           document.getElementById(
             "tiktokStatus"
           );
-
 
         if (!lastPublishId) {
 
@@ -866,10 +717,8 @@
           return;
         }
 
-
         output.innerText =
           "Vérification en cours...";
-
 
         try {
 
@@ -877,27 +726,21 @@
             await fetch(
               "/api/status",
               {
-
                 method: "POST",
-
                 headers: {
                   "Content-Type":
                     "application/json"
                 },
-
                 body:
                   JSON.stringify({
                     publish_id:
                       lastPublishId
                   })
-
               }
             );
 
-
           const data =
             await response.json();
-
 
           output.innerText =
             JSON.stringify(
@@ -905,7 +748,6 @@
               null,
               2
             );
-
 
         } catch (error) {
 
