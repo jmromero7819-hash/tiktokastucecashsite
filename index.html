@@ -920,80 +920,126 @@
           );
 
         if (!generatedVideoBlob) {
-
           status.innerText =
             "Crée d'abord la vidéo.";
-
           return;
         }
 
+        const videoSize =
+          generatedVideoBlob.size;
+
+        const contentType =
+          "video/mp4";
+
         status.innerText =
-          "Envoi de la vidéo vers TikTok...";
+          "Initialisation de l'envoi TikTok...";
 
         try {
 
-          const response =
+          // 1. Demander à Vercel uniquement une URL d'upload TikTok.
+          // La vidéo elle-même ne traverse plus Vercel.
+          const initResponse =
             await fetch(
               "/api/upload-local",
               {
-                method:
-                  "POST",
-
+                method: "POST",
                 headers: {
                   "Content-Type":
-                    generatedVideoBlob.type ||
-                    "video/mp4"
+                    "application/json"
                 },
-
-                body:
-                  generatedVideoBlob
+                body: JSON.stringify({
+                  video_size:
+                    videoSize,
+                  content_type:
+                    contentType
+                })
               }
             );
 
-          const data =
-            await response.json();
+          const initData =
+            await initResponse.json();
 
           if (
-            !response.ok ||
-            !data.success
+            !initResponse.ok ||
+            !initData.success ||
+            !initData.upload_url ||
+            !initData.publish_id
           ) {
 
             status.innerText =
-              typeof data.error ===
-              "string"
-                ? data.error
-                : JSON.stringify(
-                    data
-                  );
+              "Erreur initialisation TikTok : " +
+              (
+                initData.error ||
+                JSON.stringify(initData)
+              );
 
             return;
           }
 
+          const uploadUrl =
+            initData.upload_url;
+
           lastPublishId =
-            data.publish_id ||
-            "";
+            initData.publish_id;
 
           document
             .getElementById(
               "publishId"
             )
             .innerText =
-              lastPublishId ||
-              "Non reçu";
+              lastPublishId;
 
           status.innerText =
-            data.message ||
-            "Vidéo envoyée à TikTok.";
+            "Envoi direct de la vidéo vers TikTok...";
+
+          // 2. Envoyer directement le MP4 du navigateur vers TikTok.
+          // Ne pas définir Content-Length manuellement :
+          // le navigateur le calcule à partir du Blob.
+          const uploadResponse =
+            await fetch(
+              uploadUrl,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type":
+                    contentType,
+                  "Content-Range":
+                    `bytes 0-${videoSize - 1}/${videoSize}`
+                },
+                body:
+                  generatedVideoBlob
+              }
+            );
+
+          if (!uploadResponse.ok) {
+
+            const details =
+              await uploadResponse.text();
+
+            status.innerText =
+              "TikTok a refusé la vidéo : " +
+              uploadResponse.status +
+              (
+                details
+                  ? " - " + details
+                  : ""
+              );
+
+            return;
+          }
+
+          status.innerText =
+            "Vidéo envoyée directement vers TikTok.";
 
         } catch (error) {
 
           status.innerText =
-            "Erreur pendant l'envoi.";
+            "Erreur pendant l'envoi direct : " +
+            error.message;
 
           console.error(error);
         }
       };
-
 
     // =====================================
     // 4. STATUT TIKTOK
