@@ -605,32 +605,31 @@
           document.getElementById("videoStatus");
 
         if (!script) {
-
           status.innerText =
             "Génère d'abord le contenu.";
-
           return;
         }
 
-        if (
-          typeof MediaRecorder === "undefined"
-        ) {
+        if (!generatedVoiceBlob) {
+          status.innerText =
+            "Génère d'abord la voix off.";
+          return;
+        }
 
+        if (typeof MediaRecorder === "undefined") {
           status.innerText =
             "Ton navigateur ne supporte pas la génération vidéo.";
-
           return;
         }
 
         status.innerText =
-          "Création de la vidéo MP4 720×1280...";
+          "Création de la vidéo MP4 720×1280 avec voix off...";
+
+        let audioContext = null;
 
         try {
-
           const canvas =
-            document.getElementById(
-              "videoCanvas"
-            );
+            document.getElementById("videoCanvas");
 
           const ctx =
             canvas.getContext("2d");
@@ -639,47 +638,96 @@
             splitIntoScenes(script);
 
           if (!scenes.length) {
-
             status.innerText =
               "Impossible de préparer les scènes.";
-
             return;
           }
 
-          const fps =
-            30;
+          const fps = 30;
 
-          const sceneDuration =
-            2.5;
+          // Décoder la voix ElevenLabs pour connaître sa durée
+          // et l'ajouter comme vraie piste audio à la vidéo.
+          const audioArrayBuffer =
+            await generatedVoiceBlob.arrayBuffer();
 
-          const totalDuration =
-            Math.min(
-              20,
-              scenes.length *
-              sceneDuration
+          const AudioContextClass =
+            window.AudioContext ||
+            window.webkitAudioContext;
+
+          if (!AudioContextClass) {
+            status.innerText =
+              "Ton navigateur ne supporte pas l'audio nécessaire pour intégrer la voix.";
+            return;
+          }
+
+          audioContext =
+            new AudioContextClass();
+
+          if (audioContext.state === "suspended") {
+            await audioContext.resume();
+          }
+
+          const audioBuffer =
+            await audioContext.decodeAudioData(
+              audioArrayBuffer.slice(0)
             );
 
+          const totalDuration =
+            Math.max(1, audioBuffer.duration);
+
+          const sceneDuration =
+            totalDuration / scenes.length;
+
+          // Flux vidéo du canvas
           const stream =
             canvas.captureStream(fps);
 
+          // Destination audio enregistrable
+          const audioDestination =
+            audioContext.createMediaStreamDestination();
+
+          const audioSource =
+            audioContext.createBufferSource();
+
+          audioSource.buffer =
+            audioBuffer;
+
+          audioSource.connect(
+            audioDestination
+          );
+
+          const audioTrack =
+            audioDestination.stream
+              .getAudioTracks()[0];
+
+          if (!audioTrack) {
+            status.innerText =
+              "Impossible de créer la piste audio.";
+            return;
+          }
+
+          stream.addTrack(
+            audioTrack
+          );
+
+          // On privilégie explicitement H.264 + AAC.
+          // Si Chrome n'accepte pas ce profil précis,
+          // on essaie des variantes MP4 compatibles.
           const mp4Types = [
+            'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
             "video/mp4;codecs=avc1.42E01E",
             "video/mp4;codecs=avc1",
             "video/mp4"
           ];
 
           const mimeType =
-            mp4Types.find(
-              type =>
-                MediaRecorder
-                  .isTypeSupported(type)
+            mp4Types.find(type =>
+              MediaRecorder.isTypeSupported(type)
             );
 
           if (!mimeType) {
-
             status.innerText =
-              "Ce navigateur ne permet pas de créer directement une vidéo MP4/H.264.";
-
+              "Ce navigateur ne permet pas de créer directement une vidéo MP4/H.264 avec audio.";
             return;
           }
 
@@ -688,22 +736,19 @@
               stream,
               {
                 mimeType,
-                videoBitsPerSecond:
-                  1200000
+                videoBitsPerSecond: 1200000,
+                audioBitsPerSecond: 128000
               }
             );
 
-          const chunks =
-            [];
+          const chunks = [];
 
           recorder.ondataavailable =
             event => {
-
               if (
                 event.data &&
                 event.data.size > 0
               ) {
-
                 chunks.push(
                   event.data
                 );
@@ -711,13 +756,16 @@
             };
 
           const completed =
-            new Promise(
-              resolve => {
+            new Promise((resolve, reject) => {
+              recorder.onstop =
+                resolve;
 
-                recorder.onstop =
-                  resolve;
-              }
-            );
+              recorder.onerror =
+                event => reject(
+                  event.error ||
+                  new Error("Erreur MediaRecorder")
+                );
+            });
 
           drawFrame(
             ctx,
@@ -728,78 +776,78 @@
             0
           );
 
+          // Le recorder démarre juste avant la voix
+          // pour synchroniser les deux pistes.
           recorder.start(1000);
 
-          await new Promise(
-            resolve => {
+          audioSource.start(0);
 
-              let elapsed =
-                0;
+          const startedAt =
+            performance.now();
 
-              const frameInterval =
-                1000 / fps;
+          await new Promise(resolve => {
 
-              const timer =
-                setInterval(() => {
+            const frameInterval =
+              1000 / fps;
 
-                  elapsed +=
-                    frameInterval /
-                    1000;
+            const timer =
+              setInterval(() => {
 
-                  if (
-                    elapsed >=
-                    totalDuration
-                  ) {
+                const elapsed =
+                  (performance.now() - startedAt) /
+                  1000;
 
-                    clearInterval(
-                      timer
-                    );
+                if (elapsed >= totalDuration) {
+                  clearInterval(timer);
+                  resolve();
+                  return;
+                }
 
-                    resolve();
-
-                    return;
-                  }
-
-                  const sceneIndex =
-                    Math.min(
-                      scenes.length - 1,
-                      Math.floor(
-                        elapsed /
-                        sceneDuration
-                      )
-                    );
-
-                  const sceneProgress =
-                    (
-                      elapsed %
+                const sceneIndex =
+                  Math.min(
+                    scenes.length - 1,
+                    Math.floor(
+                      elapsed /
                       sceneDuration
-                    ) /
-                    sceneDuration;
-
-                  drawFrame(
-                    ctx,
-                    canvas,
-                    scenes[
-                      sceneIndex
-                    ],
-                    sceneIndex,
-                    scenes.length,
-                    sceneProgress
+                    )
                   );
 
-                }, frameInterval);
-            }
-          );
+                const sceneProgress =
+                  Math.min(
+                    1,
+                    (
+                      elapsed -
+                      sceneIndex *
+                      sceneDuration
+                    ) /
+                    sceneDuration
+                  );
+
+                drawFrame(
+                  ctx,
+                  canvas,
+                  scenes[sceneIndex],
+                  sceneIndex,
+                  scenes.length,
+                  sceneProgress
+                );
+
+              }, frameInterval);
+          });
+
+          try {
+            audioSource.stop();
+          } catch {
+            // La source peut déjà être terminée.
+          }
 
           recorder.stop();
 
           await completed;
 
           if (!chunks.length) {
-
             status.innerText =
               "Aucune donnée vidéo n'a été générée.";
-
             return;
           }
 
@@ -807,18 +855,13 @@
             new Blob(
               chunks,
               {
-                type:
-                  mimeType
+                type: mimeType
               }
             );
 
-          if (
-            !generatedVideoBlob.size
-          ) {
-
+          if (!generatedVideoBlob.size) {
             status.innerText =
               "La vidéo générée est vide.";
-
             return;
           }
 
@@ -839,18 +882,30 @@
             "block";
 
           status.innerText =
-            "Vidéo MP4 créée : 720×1280. Tu peux la prévisualiser.";
+            "Vidéo MP4 avec voix off créée : 720×1280. Tu peux la prévisualiser.";
 
         } catch (error) {
 
           status.innerText =
-            "Erreur pendant la création vidéo : " +
+            "Erreur pendant la création vidéo avec voix : " +
             error.message;
 
           console.error(error);
+
+        } finally {
+
+          if (
+            audioContext &&
+            audioContext.state !== "closed"
+          ) {
+            try {
+              await audioContext.close();
+            } catch {
+              // Rien à faire.
+            }
+          }
         }
       };
-
 
     // =====================================
     // 3. ENVOI TIKTOK
