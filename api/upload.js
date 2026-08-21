@@ -39,6 +39,7 @@ export default async function handler(req, res) {
 
     const allowedHosts = [
       "cdn.creatomate.com",
+      "f002.backblazeb2.com",
       "tiktokastucecashsite.vercel.app"
     ];
 
@@ -71,8 +72,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Cette première version envoie un seul chunk.
-    // TikTok autorise jusqu'à 64 Mo par chunk.
+    // TikTok autorise jusqu'à 64 Mo pour un chunk unique
     const MAX_SINGLE_CHUNK = 64 * 1024 * 1024;
 
     if (videoSize > MAX_SINGLE_CHUNK) {
